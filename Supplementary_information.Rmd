@@ -1,0 +1,39 @@
+---
+title: "Supplementary Information for: \\textit{...}"
+output:
+  pdf_document:
+    includes:
+      in_header: "header.sty"
+    toc: true
+    toc_depth: 2
+---
+
+\setcounter{table}{3}
+
+```{r style, echo = FALSE, results = 'asis', message=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+# General data overview
+
+## Signal distributions of individual proteins
+
+Distribution of $log_{2}$ transformed signal distributions in the analyzed
+samples is shown for each protein.
+
+```{r, results = "asis"}
+fls <- dir("images/manuscript/supplement", pattern = "^density",
+           full.names = TRUE)
+
+for (i in seq_along(fls)) {
+    prot_id <- sub("^density-", "", basename(fls[i]))
+    prot_id <- sub(".png", "", prot_id, fixed = TRUE)
+    cat("\n\\begin{figure}[H]\n")
+    cat("\\centering\n")
+    cat("  \\includegraphics[width=0.7\\textwidth]{",
+        fls[i], "}\n", sep = "")
+    cat("  \\caption{Signal distribution for ", prot_id, ".}\n", sep = "")
+    cat("\\end{figure}\n")
+    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
+    }
+```

@@ -989,6 +989,27 @@ abline(0, 1)
 Adjustment for hormonal contraceptive use has only a minimal influence on the
 results for BMI.
 
+# Data, figures etc for the manuscript's supplement
+
+```{r}
+dist_plot <- function(x, protein, ...) {
+    plot(density(x[, protein]), xlab = expression(log[2]~abundance),
+         main = paste0(protein, " (", prot_ann[protein, "Genes"], ")"), ...)
+    grid()
+}
+
+dr <- paste0("images/manuscript/supplement/")
+dir.create(dr, showWarnings = FALSE, recursive = TRUE)
+for (protein in proteins) {
+    fl <- paste0(dr, "density-", protein, ".png")
+    png(fl, width = 10, height = 4, units = "cm", res = 300, pointsize = 4)
+    par(mar = c(4.5, 4.2, 1.5, 0.5))
+    dist_plot(prot_data, protein, lwd = 2)
+    dev.off()
+}
+```
+
+
 
 # Session information
 
@@ -997,5 +1018,6 @@ R packages used for the analysis:
 ```{r}
 sessionInfo()
 ```
+
 
 # References
