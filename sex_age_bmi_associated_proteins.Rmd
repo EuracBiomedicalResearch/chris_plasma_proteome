@@ -73,7 +73,6 @@ library(rgl)
 library(readxl)
 library(writexl)
 library(tidyfr)
-
 mdl <- data_module("chris_scanningswath_proteins", "1.0.0.1", chris_path)
 prot_data <- data(mdl)
 prot_ann <- labels(mdl)
@@ -162,7 +161,6 @@ variables (age, sex, fasting and BMI) as well as pregnant women.
 ```{r}
 nas <- is.na(prot_data[, c("Sex", "Fasting", "Age", "BMIcat")])
 prot_data <- prot_data[rowSums(nas) == 0, ]
-
 ## remove pregnant women
 rem <- c(which(prot_data$Pregnant == "Yes"),
          which(prot_data$Pregnant == "Don't know, possible"))
@@ -173,7 +171,7 @@ Summary for the final data set.
 
 ```{r}
 prot_data[, c("Sex", "Fasting", "Age", "Season", "BMIcat",
-              "Pregnant", "Fasting")] |> summary()
+              "Pregnant", "Fasting")] %>% summary()
 ```
 
 This reduces the data set to `r nrow(prot_data)` individuals.
@@ -873,7 +871,6 @@ FunForLinReg2 <- function(AnalyteName, Data) {
 LMRegtests <- do.call(
     cbind, lapply(proteins, function(x) FunForLinReg2(x, prot_data)))
 Test_output_sens <- t(LMRegtests)
-
 ```
 
 ## Influence on sex-associated proteins
@@ -907,7 +904,6 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "Sex association")
 grid()
 abline(0, 1)
-
 ```
 
 Coefficients are larger and p-values smaller for proteins without adjustment for
@@ -945,7 +941,6 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "Age association")
 grid()
 abline(0, 1)
-
 ```
 
 The effect of the adjustment is even bigger for age associated proteins.
@@ -983,11 +978,63 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "BMI 4 vs 2")
 grid()
 abline(0, 1)
-
 ```
 
 Adjustment for hormonal contraceptive use has only a minimal influence on the
 results for BMI.
+
+
+# Correlation between clinical/lab parameters and plasma proteomics data
+
+We now consider clinical and lab parameters from the CHRIS datasets. We restrict 
+the data set to only numeric lab or clinical parameters and in addition remove 
+parameters with more than 50% of missing values.
+
+```{r}
+## annotation key
+NamesKey <- chrisTraitAnnotations()
+## merge lab & clin chris datasets
+chris_cl <- cbind.data.frame(labdata_info[rownames(prot_data), -1],
+                             clin[rownames(prot_data), -1])
+## select numeric variables
+chris_cl <- chris_cl[, NamesKey[colnames(chris_cl), "type"] == "numeric"]
+chris_cl <- chris_cl[, vapply(chris_cl, is.numeric, logical(1))]
+chris_cl <- chris_cl[, vapply(
+    chris_cl, function(z) sum(is.na(z)) < length(z) / 2, logical(1))]
+```
+
+Compute Spearman correlation coefficients between clinical/lab and SWATH
+proteins:
+
+```{r, warnings = FALSE}
+cormat <- cor(chris_cl, prot_data[, proteins],
+              method = "spearman", use = "pairwise.complete.obs")
+# Melt the correlation matrix
+prot_cors <- melt(cormat, na.rm = TRUE)
+colnames(prot_cors) <- c("label", "UniProt", "SWATH_rho")
+prot_cors$label <- as.character(prot_cors$label)
+prot_cors$UniProt <- as.character(prot_cors$UniProt)
+prot_cors$gene <- prot_ann[prot_cors$UniProt, "Genes"]
+prot_cors$description <- prot_ann[prot_cors$UniProt, "long_description"]
+prot_cors$name <- NamesKey[prot_cors$label, "name"]
+prot_cors$note_detail <- NamesKey[prot_cors$label, "note_detail"]
+#prot_cors_sub <- prot_cors[abs(prot_cors$SWATH_rho) > 0.3, ]
+prot_cors$SWATH_rho <- round(prot_cors$SWATH_rho, 6)
+prot_cors <- prot_cors[order(abs(prot_cors$SWATH_rho), decreasing = TRUE), ]
+datatable(prot_cors)
+```
+
+Correlation for the best correlating pair is shown below.
+
+```{r, fig.path = IMAGE_PATH, fig.cap = "Best correlating protein and lab parameter.", fig.height = 7, fig.width = 7}
+plot(prot_data[, prot_cors$UniProt[1L]],
+     chris_cl[, prot_cors$label[1L]],
+     pch = 16, col = "#00000060",
+     xlab = prot_cors$gene[1L],
+     ylab = prot_cors$name[1L],
+     main = "ScanningSWATH")
+grid()
+```
 
 
 # Session information
