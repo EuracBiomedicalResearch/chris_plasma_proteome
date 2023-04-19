@@ -203,6 +203,54 @@ gg_1 <- autoplot(prcomp(scaledData), data = prot_data,
 ggplotly_or_not(gg_1, PLOTLY)
 ```
 
+```{r}
+## FIGURE 1
+## Transparency for protein names depending on arrow length?
+png("images/manuscript/Figure_1.png", width = 10, height = 10, units = "cm",
+    res = 600, pointsize = 4)
+
+pc <- prcomp(scaledData)
+library(CompMetaboTools)
+cols <- rep("#E41A1C", nrow(prot_data))
+cols[prot_data$Sex == "Male"] <- "#377EB8"
+
+layout(matrix(1:2), heights = c(1, 0.25))
+par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+
+plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+         xlim = c(-16, 9))
+
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+       cex = 1.5)
+grid()
+
+## Age distribution along x.
+brks <- seq(-16, to = 9, by = 1)
+f <- cut(pc$x[, 1], breaks = brks)
+ages <- split(prot_data$Age, f = f)
+par(mar = c(0.5, 4.3, 0.5, 0.5))
+boxplot(ages, at = brks[-1] - 0.5, xlim = c(-16, 9), xaxt = "n",
+        ylab = "Age", lwd = 0.75)
+grid()
+
+dev.off()
+```
+
+
 There is an interesting separation on PC1 with a subgroup of mostly female
 participants which seems also to be related to Age (not shown).
 
@@ -277,6 +325,55 @@ gg_2 <- autoplot(prcomp(scaledData), x = 1, y = 2,
     geom_point(aes(colour = Sex_horm), size = 1) +
     theme_bw ()
 ggplotly_or_not(gg_2, PLOTLY)
+```
+
+```{r, echo = FALSE}
+## Supplementary Figure PCA
+## Same plot but with coloring representing HCU.
+png("images/manuscript/supplement/Figure_S149.png", width = 8.2, height = 6.4, units = "cm",
+    res = 600, pointsize = 4)
+
+cols <- rep("#999999", nrow(prot_data))
+cols[prot_data$Sex_horm == "Yes"] <- "#FF7F00"
+
+par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+
+plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+         xlim = c(-16, 9))
+
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+       cex = 1.5)
+grid()
+dev.off()
+
+## Supplementary Figure P01019
+f <- as.character(prot_data$Sex)
+f[prot_data$Sex_horm == "Yes"] <- "HCU"
+f <- factor(f, levels = c("HCU", "Female", "Male"))
+
+png("images/manuscript/supplement/Figure_S150.png", width = 6.4, height = 6.4, units = "cm",
+    res = 600, pointsize = 4)
+library(vioplot)
+par(mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n",
+    cex.main = 2.5)
+vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
+        main = "P01019 (AGT)")
+grid(nx = NA, ny = NULL)
+dev.off()
 ```
 
 Most of the participants separating from the main group take indeed systemic
@@ -408,11 +505,11 @@ diff_perc <- apply(Test_output[, comps],
                    MARGIN = 2, diff_percentage)
 colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
 #' define which metabolites are considered significant: require p-value < 0.05
-#' and difference in concentration > 2 * CV_QC (expressed in %)
+#' and difference in concentration > CV_QC (expressed in %)
 sign_cv <- lapply(comps, function(z) {
     z <- sub("coef_", "", z)
     sign_p[, paste0("significant_", z)] &
-        diff_perc[, paste0("diff_perc_", z)] > 200 *
+        diff_perc[, paste0("diff_perc_", z)] > 100 *
         prot_ann[proteins, "cv_qc_chris"]
 })
 sign_cv <- do.call(cbind, sign_cv)
@@ -464,6 +561,9 @@ results$Avg_BMI4 <- colMeans(
     prot_data[which(prot_data$BMIcat == "4"), proteins])
 dr <- paste0("data/xlsx/", filename)
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
+
+colnames(results) <- sub("^description$", "Uniprot", colnames(results))
+colnames(results) <- sub("^long_description$", "Description", colnames(results))
 write_xlsx(
     results, path = paste0(dr, "/results_sex_age_bmi_sex_hormone_adjusted.xlsx"))
 ```
@@ -510,7 +610,7 @@ The (static) table with the significant proteins is shown below:
 
 ```{r table-sig-sex, results = "asis", echo = FALSE}
 significant_table <- function(x, comparison = character(),
-                              columns = c("Genes", "long_description",
+                              columns = c("Genes", "Description",
                                           "cv_qc_chris")) {
  sigs <- x[, paste0("significant_", comparison)]
  columns <- c(columns, paste0(c("coef_", "p.adj_", "effect_size_"), comparison))
