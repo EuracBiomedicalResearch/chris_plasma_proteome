@@ -1018,10 +1018,14 @@ prot_cors$gene <- prot_ann[prot_cors$UniProt, "Genes"]
 prot_cors$description <- prot_ann[prot_cors$UniProt, "long_description"]
 prot_cors$name <- NamesKey[prot_cors$label, "name"]
 prot_cors$note_detail <- NamesKey[prot_cors$label, "note_detail"]
-#prot_cors_sub <- prot_cors[abs(prot_cors$SWATH_rho) > 0.3, ]
+prot_cors <- prot_cors[abs(prot_cors$SWATH_rho) > 0.2, ]
 prot_cors$SWATH_rho <- round(prot_cors$SWATH_rho, 6)
 prot_cors <- prot_cors[order(abs(prot_cors$SWATH_rho), decreasing = TRUE), ]
-datatable(prot_cors)
+prot_cors %>%
+  DT::datatable(
+      extensions = 'Buttons', 
+    options = list(dom = 'Bfrtip', 
+                   buttons = c('excel', "csv")))
 ```
 
 Correlation for the best correlating pair is shown below.
