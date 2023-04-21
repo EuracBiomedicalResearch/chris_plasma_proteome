@@ -204,7 +204,7 @@ ggplotly_or_not(gg_1, PLOTLY)
 ```{r}
 ## FIGURE 1
 ## Transparency for protein names depending on arrow length?
-png("images/manuscript/Figure_1.png", width = 10, height = 10, units = "cm",
+png("images/manuscript/Figure_2.png", width = 10, height = 10, units = "cm",
     res = 600, pointsize = 4)
 
 pc <- prcomp(scaledData)
@@ -1104,62 +1104,95 @@ for (protein in proteins) {
 ```
 
 
-
 # Correlation between clinical/lab parameters and plasma proteomics data
 
-We now consider clinical and lab parameters from the CHRIS datasets. We restrict 
-the data set to only numeric lab or clinical parameters and in addition remove 
-parameters with more than 50% of missing values.
+We now consider selected clinical laboratory parameters measured for CHRIS
+participants and perform a correlation analysis with related plasma protein
+concentrations. The table below lists the laboratory parameters and selected
+protein as well as their correlation coefficient (Spearman rho). Since most
+laboratory measurements don't quantify directly proteins we don't expect a
+perfect similarity between the mass spectrometry and laboratory assay based
+measurements.
+
+```{r, results = "asis"}
+pairs <- data.frame(
+    label = c("x0lp04q", "x0lp09", "x0lp17", "x0lp18",
+              "x0lp19", "x0lp29", "x0lp41"),
+    Uniprot = c("P01008", "P02768", "P02647", "P04114",
+                "P02656", "P02787", "P69905"))
+anns <- chrisTraitAnnotations()
+
+pairs$parameter_name <- anns[pairs$label, "name"]
+pairs$hgnc_symbol <- prot_ann[pairs$Uniprot, "Genes"]
+pairs$description <- prot_ann[pairs$Uniprot, "long_description"]
+
+pairs$rho <- NA_real_
+for (i in seq_len(nrow(pairs))) {
+    pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
+                        labdata_info[rownames(prot_data), pairs[i, "label"]],
+                        use = "pairwise.complete.obs", method = "spearman")
+}
+pandoc.table(pairs, style = "rmarkdown", split.tables = Inf,
+             caption = "Correlation with selected laboratory parameters")
+```
+
+Apolipoprotein A-I is the major structural component of HDL while apolipoprotein
+B is the primary apolipoprotein of LDL
 
 ```{r}
-## annotation key
-NamesKey <- chrisTraitAnnotations()
-## merge lab & clin chris datasets
-chris_cl <- cbind.data.frame(labdata_info[rownames(prot_data), -1],
-                             clin[rownames(prot_data), -1])
-## select numeric variables
-chris_cl <- chris_cl[, NamesKey[colnames(chris_cl), "type"] == "numeric"]
-chris_cl <- chris_cl[, vapply(chris_cl, is.numeric, logical(1))]
-chris_cl <- chris_cl[, vapply(
-    chris_cl, function(z) sum(is.na(z)) < length(z) / 2, logical(1))]
+for (i in seq_len(nrow(pairs))) {
+    plot(labdata_info[rownames(prot_data), pairs[i, "label"]],
+         2^prot_data[, pairs[i, "Uniprot"]],
+         pch = 21, col = "#00000080", bg = "#00000040",
+         xlab = pairs[i, "parameter_name"], ylab = pairs[i, "hgnc_symbol"])
+    grid()
+}
 ```
 
-Compute Spearman correlation coefficients between clinical/lab and SWATH
-proteins:
+- *x0lp04q* (Antithrombin (%)): measured in plasma citrate using the enzymatic
+  Siemens Innovance Anthithrombine assay on a ROCHE SYSMEX CA1500 to quantify
+  the functionally active antithrombin; after 2014-01 using the enzymatic
+  STA-Stachrom AT III - REF 00596 assay on a STAGO STA COMPACT MAX instrument.
+- *x0lp09* (Albumin (g/dL): measured in serum using the colorimetric Cobas ALB
+  plus Albumin BCG assay on a ROCHE MODULAR PPE and since 2014-05 using the
+  colorimetric ALBUMIN BCG assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
+- *x0lp17* (HDL (mg/dL)): measured in serum using the enzymatic Cobas HDL-C PLUS
+  3rd generation assay on a ROCHE MODULAR PPE instrument. After 2014-05 using
+  the ULTRA HDL on an ABBOT DIAGNOSTIC ARCHITECT instrument.
+- *x0lp18* (LDL (mg/dL)): measured in serum using the enzymatic Cobas LDL-C plus
+  2nd generation assay on a ROCHE MODULAR PPE and since 2014-05 using the DIRECT
+  LDL assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
+- *x0lp19* (Triglycerides (mg/dL))): measured in serum using the enzymatic Cobas
+  Triglyceride GPO-PAP assay on a ROCHE MODULAR PPE and since 2014-05 using the
+  TRIGLYCERIDE assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
+- *x0lp29* (Transferrin (mg/dL)): measured in serum using the immunological
+  Cobas Tina-quant Transferring ver.2 assay on an ROCHE MODULAR PPE
+  instrument. Since 2014-05 using the immunological TRANSFERRIN assay on an
+  ABBOT DIAGNOSTIC ARCHITECT.
+- *x0lp41* (HGB (g/dL)): measured in EDTA plasma using the electronic impedance
+  laser light scattering based assay with Cell-Dyn Sapphire reagents on an ABBOT
+  CD SAPPHIRE instrument and since 2014-03 on a SYSMEX XN-1000 (also electronic
+  impedance laser light scattering based assay).
 
-```{r, warnings = FALSE}
-cormat <- cor(chris_cl, prot_data[, proteins],
-              method = "spearman", use = "pairwise.complete.obs")
-# Melt the correlation matrix
-prot_cors <- melt(cormat, na.rm = TRUE)
-colnames(prot_cors) <- c("label", "UniProt", "SWATH_rho")
-prot_cors$label <- as.character(prot_cors$label)
-prot_cors$UniProt <- as.character(prot_cors$UniProt)
-prot_cors$gene <- prot_ann[prot_cors$UniProt, "Genes"]
-prot_cors$description <- prot_ann[prot_cors$UniProt, "long_description"]
-prot_cors$name <- NamesKey[prot_cors$label, "name"]
-prot_cors$note_detail <- NamesKey[prot_cors$label, "note_detail"]
-prot_cors <- prot_cors[abs(prot_cors$SWATH_rho) > 0.2, ]
-prot_cors$SWATH_rho <- round(prot_cors$SWATH_rho, 6)
-prot_cors <- prot_cors[order(abs(prot_cors$SWATH_rho), decreasing = TRUE), ]
-prot_cors %>%
-  DT::datatable(
-      extensions = 'Buttons', 
-    options = list(dom = 'Bfrtip', 
-                   buttons = c('excel', "csv")))
-```
+```{r}
+png("images/manuscript/Figure_1.png", width = 10, height = 5, units = "cm",
+    res = 600, pointsize = 4)
 
-Correlation for the best correlating pair is shown below.
-
-```{r, fig.path = IMAGE_PATH, fig.cap = "Best correlating protein and lab parameter.", fig.height = 7, fig.width = 7}
-plot(prot_data[, prot_cors$UniProt[1L]],
-     chris_cl[, prot_cors$label[1L]],
-     pch = 16, col = "#00000060",
-     xlab = prot_cors$gene[1L],
-     ylab = prot_cors$name[1L],
-     main = "ScanningSWATH")
+par(mfrow = c(1, 2), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot(labdata_info[rownames(prot_data), pairs[4, "label"]],
+     2^prot_data[, pairs[4, "Uniprot"]],
+     pch = 16, col = "#00000040",
+     xlab = pairs[4, "parameter_name"], ylab = pairs[4, "hgnc_symbol"])
 grid()
+plot(labdata_info[rownames(prot_data), pairs[6, "label"]],
+     2^prot_data[, pairs[6, "Uniprot"]],
+     pch = 16, col = "#00000040",
+     xlab = pairs[6, "parameter_name"], ylab = pairs[6, "hgnc_symbol"])
+grid()
+dev.off()
+
 ```
+
 
 
 # Session information
