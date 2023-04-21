@@ -1,0 +1,246 @@
+---
+title: "Supplementary Information for: \\textit{...}"
+output:
+  pdf_document:
+    includes:
+      in_header: "header.sty"
+    toc: true
+    toc_depth: 2
+---
+
+\setcounter{table}{3}
+
+```{r style, echo = FALSE, results = 'asis', message=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+# General data overview
+
+## Signal distributions of individual proteins
+
+Distribution of $log_{2}$ transformed signal distributions in the analyzed
+samples is shown for each protein.
+
+```{r, results = "asis"}
+fls <- dir("images/manuscript/supplement", pattern = "^density",
+           full.names = TRUE)
+
+for (i in seq_along(fls)) {
+    prot_id <- sub("^density-", "", basename(fls[i]))
+    prot_id <- sub(".png", "", prot_id, fixed = TRUE)
+    cat("\n\\begin{figure}[H]\n")
+    cat("\\centering\n")
+    cat("  \\includegraphics[width=0.7\\textwidth]{",
+        fls[i], "}\n", sep = "")
+    cat("  \\caption{Signal distribution for ", prot_id, ".}\n", sep = "")
+    cat("\\end{figure}\n")
+    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
+    }
+```
+
+
+## Principal Component Analysis and influence of hormonal contraceptive use
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/Figure_S149.png}\n",
+    sep = "")
+cat("  \\caption{Principal component anaysis of the plasma proteome data. ",
+    "Data points are colored according to usage of hormonal contraceptives.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/Figure_S150.png}\n", sep = "")
+cat("  \\caption{Abundance of the protein Angiotensinogen (AGT) in study ",
+    "participants using hormonal contraceptives (HCU) and female and male ",
+    "participants that don't.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+
+# Sex, age, BMI and hormonal contraceptive use-associated proteins
+
+## Sex-associated plasma proteins
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+library(readxl)
+library(pander)
+results <- as.data.frame(read_xlsx(
+    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
+           "results_sex_age_bmi_sex_hormone_adjusted.xlsx")))
+rownames(results) <- results$Uniprot
+
+tab <- results[results$significant_SexFemale,
+               c("Description", "Genes",
+                 "coef_SexFemale",
+                 "p.adj_SexFemale",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_SexFemale), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with significant difference in abundance between female ",
+        "and male study participants. $coef$ and $p_{adj}$: coefficient ",
+        "(representing the differential abundance in log2 scale) and p-value ",
+        "adjusted for multiple hypothesis testing. $A_{F}$ and $A_{M}$:",
+        " average abundance in female and male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+
+```
+
+
+## Age-associated plasma proteins
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+tab <- results[results$significant_Age,
+               c("Description", "Genes",
+                 "coef_Age",
+                 "p.adj_Age",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_Age), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins significantly associated with participants' age. ",
+        "$coef$ and $p_{adj}$: coefficient (representing the change in ",
+        "abundance per year) and p-value adjusted for multiple hypothesis ",
+        "testing. $A_{F}$ and $A_{M}$: average abundance in female and ",
+        "male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+```
+
+## Body mass index associated plasma proteins
+
+Proteins with significant differences in concentrations between body mass
+index (BMI) categories 1 (BMI < 18.5), 3 (25 <= BMI < 30) and 4 (BMI > 30) to
+the *normal* category 2 (18.5 <= BMI < 25) are listed in the tables
+below. Proteins with an adjusted p-value smaller than 0.05 and a difference
+in concentrations larger than the coefficient of variation in QC (study
+pool) samples are considered significant.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+tab <- results[results$significant_BMIcat1,
+               c("Description", "Genes",
+                 "coef_BMIcat1",
+                 "p.adj_BMIcat1",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_BMIcat1), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with significant difference in abundance between ",
+        "participants with a BMI < 18.5 (BMI1) and participants with a BMI ",
+        "between 18.5 and 25 (BMI2; normal). ",
+        "$coef$ and $p_{adj}$: coefficient (representing the differential ",
+        "abundance in log2 scale) and p-value adjusted for multiple ",
+        "hypothesis testing. $A_{F}$ and $A_{M}$:",
+        " average abundance in female and male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+tab <- results[results$significant_BMIcat3,
+               c("Description", "Genes",
+                 "coef_BMIcat3",
+                 "p.adj_BMIcat3",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_BMIcat3), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with significant difference in abundance between ",
+        "participants with a BMI between 25 and 30 (BMI3) and participants ",
+        "with a BMI between 18.5 and 25 (BMI2; normal). ",
+        "$coef$ and $p_{adj}$: coefficient (representing the differential ",
+        "abundance in log2 scale) and p-value adjusted for multiple ",
+        "hypothesis testing. $A_{F}$ and $A_{M}$:",
+        " average abundance in female and male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+tab <- results[results$significant_BMIcat4,
+               c("Description", "Genes",
+                 "coef_BMIcat4",
+                 "p.adj_BMIcat4",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_BMIcat4), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with significant difference in abundance between ",
+        "participants with a BMI > 30 (BMI4) and participants with a BMI ",
+        "between 18.5 and 25 (BMI2; normal). ",
+        "$coef$ and $p_{adj}$: coefficient (representing the differential ",
+        "abundance in log2 scale) and p-value adjusted for multiple ",
+        "hypothesis testing. $A_{F}$ and $A_{M}$:",
+        " average abundance in female and male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+
+```
+
+
+## Plasma proteins associated with usage of hormonal contraceptives
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+tab <- results[results$significant_Sex_hormYes,
+               c("Description", "Genes",
+                 "coef_Sex_hormYes",
+                 "p.adj_Sex_hormYes",
+                 "Avg_Female",
+                 "Avg_Male")]
+tab <- tab[order(tab$p.adj_Sex_hormYes), ]
+colnames(tab) <- c("$Description$", "$Gene$", "$coef$", "$p_{adj}$",
+                   "$A_{F}$", "$A_{M}$")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with significant difference in abundance between study ",
+        "participants that use hormonal contraceptives and participants that ",
+        "don't.",
+        " $coef$ and $p_{adj}$: coefficient (representing the differential ",
+        "abundance in log2 scale) and p-value ",
+        "adjusted for multiple hypothesis testing. $A_{F}$ and $A_{M}$:",
+        " average abundance in female and male participants, respectively. ",
+        "Proteins are ordered by p-value."))
+
+```
