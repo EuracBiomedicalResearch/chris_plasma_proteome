@@ -3,6 +3,7 @@ local_data/*
 data/phenodata.txt
 phenodata.txt
 data/*
+chris_scanning*
 *.RData
 *.png
 *.html

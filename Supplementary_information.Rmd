@@ -244,3 +244,62 @@ pandoc.table(
         "Proteins are ordered by p-value."))
 
 ```
+
+
+## Sensitivity analysis
+
+To evaluate the influence of hormonal contraceptive use on results for age, sex
+and BMI associations, the analysis was repeated without adjustment for hormonal
+contraceptive use. Proteins that were found significantly associated with sex in
+this analysis, but were no longer significant after adjustment for hormonal
+contraceptive use are listed in the table below.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+a <- read_xlsx(
+    "data/xlsx/sex_age_bmi_associated_proteins/sensitivity_sex.xlsx") |>
+as.data.frame()
+
+colnames(a) <- c("$Gene$", "$coef$", "$p$", "$coef_{adj}$",
+                 "$p_{adj}$", "$coef_{HCU}$", "$p_{HCU}$")
+rownames(a) <- NULL
+pandoc.table(
+    a, split.table = "Inf", justify = "cllllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins significantly associated with sex in an analysis without ",
+        "adjusting for hormonal contraceptive use that were no longer ",
+        "significant after adjustment. $coef$ and $p$: coefficient and ",
+        "bonferroni adjusted p-value from the analysis without adjustment for ",
+        "hormonal contraceptive use. $coef_{adj}$, $p_{adj}$, $coef_{HCU}$ ",
+        "and $p_{HCU}$: coefficients and bonferroni adjusted p-values for ",
+        "sex association and hormoman contraceptive use association from ",
+        "the analysis with adjustment for hormonal contraceptive use."))
+
+```
+
+Proteins significantly associated with age from an analysis without adjustment
+for hormonal contraceptive use that were no longer significant after adjustment
+for hormonal contraceptive use are listed in the table below.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+b <- read_xlsx(
+    "data/xlsx/sex_age_bmi_associated_proteins/sensitivity_age.xlsx") |>
+as.data.frame()
+
+colnames(b) <- c("$Gene$", "$coef$", "$p$", "$coef_{adj}$",
+                 "$p_{adj}$", "$coef_{HCU}$", "$p_{HCU}$")
+rownames(b) <- NULL
+pandoc.table(
+    b, split.table = "Inf", justify = "cllllll", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins significantly associated with age in an analysis without ",
+        "adjusting for hormonal contraceptive use that were no longer ",
+        "significant after adjustment. $coef$ and $p$: coefficient and ",
+        "bonferroni adjusted p-value from the analysis without adjustment for ",
+        "hormonal contraceptive use. $coef_{adj}$, $p_{adj}$, $coef_{HCU}$ ",
+        "and $p_{HCU}$: coefficients and bonferroni adjusted p-values for ",
+        "age association and hormonal contraceptive use association from ",
+        "the analysis with adjustment for hormonal contraceptive use."))
+
+```
