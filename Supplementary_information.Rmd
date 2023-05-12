@@ -328,3 +328,22 @@ pandoc.table(
         "the analysis with adjustment for hormonal contraceptive use."))
 
 ```
+
+
+# Extended Material and Methods
+
+```{=latex}
+\begin{table}[h!]
+\caption{Set up for gradient separation (left) and wash and equilibration (right).}
+\begin{tabular}{llll|llll}
+\multicolumn{4}{c|}{Gradient pump} & \multicolumn{4}{c}{Regeneration pump} \\ \hline
+Time  & \%A & \%B & FR {[}ml/mn{]} & Time  & \%A  & \%B  & FR {[}ml/mn{]}  \\
+0     & 97  & 3   & 0.8            & 0     & 97   & 3    & 0.8             \\
+0.7   & 20  & 80  & 1              & 5     & 65   & 35   & 0.8             \\
+1.5   & 20  & 80  & 1              & 5.05  & 97   & 3    & 1               \\
+2     & 97  & 3   & 1              & 5.75  & 97   & 3    & 1               \\
+5     & 97  & 3   & 1              & 5.8   & 97   & 3    & 0.8             \\
+5.2   & 97  & 3   & 0.8            &       &      &      &
+\end{tabular}
+\end{table}
+```
