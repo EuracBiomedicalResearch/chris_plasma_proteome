@@ -1446,112 +1446,6 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "Hormonal contraceptive use")
 grid()
 abline(0, 1)
-```
-
-
-# Data, figures etc for the manuscript's supplement
-
-```{r}
-dist_plot <- function(x, protein, ...) {
-    plot(density(x[, protein]), xlab = expression(log[2]~abundance),
-         main = paste0(protein, " (", prot_ann[protein, "Genes"], ")"), ...)
-    grid()
-}
-dr <- paste0("images/manuscript/supplement/")
-dir.create(dr, showWarnings = FALSE, recursive = TRUE)
-for (protein in proteins) {
-    fl <- paste0(dr, "density-", protein, ".png")
-    png(fl, width = 10, height = 4, units = "cm", res = 300, pointsize = 4)
-    par(mar = c(4.5, 4.2, 1.5, 0.5))
-    dist_plot(prot_data, protein, lwd = 2)
-    dev.off()
-}
-```
-
-
-# Correlation between clinical/lab parameters and plasma proteomics data
-
-We now consider selected clinical laboratory parameters measured for CHRIS
-participants and perform a correlation analysis with related plasma protein
-concentrations. The table below lists the laboratory parameters and selected
-protein as well as their correlation coefficient (Spearman rho). Since most
-laboratory measurements don't quantify directly proteins we don't expect a
-perfect similarity between the mass spectrometry and laboratory assay based
-measurements.
-
-```{r, results = "asis"}
-pairs <- data.frame(
-    label = c("x0lp04q", "x0lp09", "x0lp17", "x0lp18",
-              "x0lp19", "x0lp29", "x0lp41"),
-    Uniprot = c("P01008", "P02768", "P02647", "P04114",
-                "P02656", "P02787", "P69905"))
-anns <- chrisTraitAnnotations()
-pairs$parameter_name <- anns[pairs$label, "name"]
-pairs$hgnc_symbol <- prot_ann[pairs$Uniprot, "Genes"]
-pairs$description <- prot_ann[pairs$Uniprot, "long_description"]
-pairs$rho <- NA_real_
-for (i in seq_len(nrow(pairs))) {
-    pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
-                        labdata_info[rownames(prot_data), pairs[i, "label"]],
-                        use = "pairwise.complete.obs", method = "spearman")
-}
-pandoc.table(pairs, style = "rmarkdown", split.tables = Inf,
-             caption = "Correlation with selected laboratory parameters")
-```
-
-Apolipoprotein A-I is the major structural component of HDL while apolipoprotein
-B is the primary apolipoprotein of LDL
-
-```{r}
-for (i in seq_len(nrow(pairs))) {
-    plot(labdata_info[rownames(prot_data), pairs[i, "label"]],
-         2^prot_data[, pairs[i, "Uniprot"]],
-         pch = 21, col = "#00000080", bg = "#00000040",
-         xlab = pairs[i, "parameter_name"], ylab = pairs[i, "hgnc_symbol"])
-    grid()
-}
-```
-
-- *x0lp04q* (Antithrombin (%)): measured in plasma citrate using the enzymatic
-  Siemens Innovance Anthithrombine assay on a ROCHE SYSMEX CA1500 to quantify
-  the functionally active antithrombin; after 2014-01 using the enzymatic
-  STA-Stachrom AT III - REF 00596 assay on a STAGO STA COMPACT MAX instrument.
-- *x0lp09* (Albumin (g/dL): measured in serum using the colorimetric Cobas ALB
-  plus Albumin BCG assay on a ROCHE MODULAR PPE and since 2014-05 using the
-  colorimetric ALBUMIN BCG assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
-- *x0lp17* (HDL (mg/dL)): measured in serum using the enzymatic Cobas HDL-C PLUS
-  3rd generation assay on a ROCHE MODULAR PPE instrument. After 2014-05 using
-  the ULTRA HDL on an ABBOT DIAGNOSTIC ARCHITECT instrument.
-- *x0lp18* (LDL (mg/dL)): measured in serum using the enzymatic Cobas LDL-C plus
-  2nd generation assay on a ROCHE MODULAR PPE and since 2014-05 using the DIRECT
-  LDL assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
-- *x0lp19* (Triglycerides (mg/dL))): measured in serum using the enzymatic Cobas
-  Triglyceride GPO-PAP assay on a ROCHE MODULAR PPE and since 2014-05 using the
-  TRIGLYCERIDE assay on an ABBOT DIAGNOSTIC ARCHITECT instrument.
-- *x0lp29* (Transferrin (mg/dL)): measured in serum using the immunological
-  Cobas Tina-quant Transferring ver.2 assay on an ROCHE MODULAR PPE
-  instrument. Since 2014-05 using the immunological TRANSFERRIN assay on an
-  ABBOT DIAGNOSTIC ARCHITECT.
-- *x0lp41* (HGB (g/dL)): measured in EDTA plasma using the electronic impedance
-  laser light scattering based assay with Cell-Dyn Sapphire reagents on an ABBOT
-  CD SAPPHIRE instrument and since 2014-03 on a SYSMEX XN-1000 (also electronic
-  impedance laser light scattering based assay).
-
-```{r}
-png("images/manuscript/Figure_1.png", width = 10, height = 5, units = "cm",
-    res = 600, pointsize = 4)
-par(mfrow = c(1, 2), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot(labdata_info[rownames(prot_data), pairs[4, "label"]],
-     2^prot_data[, pairs[4, "Uniprot"]],
-     pch = 16, col = "#00000040",
-     xlab = pairs[4, "parameter_name"], ylab = pairs[4, "hgnc_symbol"])
-grid()
-plot(labdata_info[rownames(prot_data), pairs[6, "label"]],
-     2^prot_data[, pairs[6, "Uniprot"]],
-     pch = 16, col = "#00000040",
-     xlab = pairs[6, "parameter_name"], ylab = pairs[6, "hgnc_symbol"])
-grid()
->>>>>>> origin/nikola
 dev.off()
 ```
 
@@ -1597,7 +1491,6 @@ dist_plot <- function(x, protein, ...) {
          main = paste0(protein, " (", prot_ann[protein, "Genes"], ")"), ...)
     grid()
 }
-
 dr <- paste0("images/manuscript/supplement/")
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
 for (protein in proteins) {
@@ -1627,11 +1520,9 @@ pairs <- data.frame(
     Uniprot = c("P01008", "P02768", "P02647", "P04114",
                 "P02656", "P02787", "P69905"))
 anns <- chrisTraitAnnotations()
-
 pairs$parameter_name <- anns[pairs$label, "name"]
 pairs$hgnc_symbol <- prot_ann[pairs$Uniprot, "Genes"]
 pairs$description <- prot_ann[pairs$Uniprot, "long_description"]
-
 pairs$rho <- NA_real_
 for (i in seq_len(nrow(pairs))) {
     pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
@@ -1683,7 +1574,6 @@ for (i in seq_len(nrow(pairs))) {
 ```{r}
 png("images/manuscript/Figure_1.png", width = 10, height = 5, units = "cm",
     res = 600, pointsize = 4)
-
 par(mfrow = c(1, 2), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
 plot(labdata_info[rownames(prot_data), pairs[4, "label"]],
      2^prot_data[, pairs[4, "Uniprot"]],
@@ -1696,10 +1586,7 @@ plot(labdata_info[rownames(prot_data), pairs[6, "label"]],
      xlab = pairs[6, "parameter_name"], ylab = pairs[6, "hgnc_symbol"])
 grid()
 dev.off()
-
 ```
-
-
 
 
 # Session information
