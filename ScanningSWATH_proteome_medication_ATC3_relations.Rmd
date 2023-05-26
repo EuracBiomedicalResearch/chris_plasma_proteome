@@ -1,0 +1,1180 @@
+---
+title: "Relationships between ScanningSWATH mass-spectrometry (MS)-based plasma proteome and medication status (atc 3)" 
+author: "Nikola Dordevic, Johannes Rainer"
+graphics: yes
+output:
+  BiocStyle::html_document:
+    toc_float: true
+    code_folding: hide
+bibliography: references.bib
+---
+
+**Modified**: `r file.info("ScanningSWATH_proteome_medication_ATC3_relations.Rmd")$mtime`<br />
+**Compiled**: `r date()`
+
+```{r biocstyle, echo = FALSE, results = "hide", message = FALSE}
+#' rmarkdown format settings
+library(BiocStyle)
+library(knitr)
+opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 8, fig.height = 7)
+BiocStyle::markdown()
+```
+
+```{r settings, echo = FALSE}
+#' General settings
+filename <- "ScanningSWATH_proteome_medication_ATC3_relations"
+#' Path to save images to
+IMAGE_PATH <- paste0("images/", filename, "/")
+if (file.exists(IMAGE_PATH))
+    unlink(IMAGE_PATH, recursive = TRUE)
+dir.create(IMAGE_PATH, recursive = TRUE)
+#' Path to store RData files
+RDATA_PATH <- paste0("data/RData/", filename, "/")
+dir.create(RDATA_PATH, recursive = TRUE, showWarnings = FALSE)
+#' wheter interactive plots should be used. Should be set to FALSE if report
+#' is to be shared with external researchers.
+PLOTLY <- FALSE
+ggplotly_or_not <- function(x, interactive = TRUE) {
+    if (interactive) ggplotly(x)
+    else print(x)
+}
+opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 8,
+               fig.height = 7, fig.path = IMAGE_PATH)
+chris_path <- "."
+```
+
+# Introduction
+
+In this analysis, relationships between ScanningSWATH mass-spectrometry 
+(MS)-based plasma proteome and available medication statuses (ATC level 3) are 
+investigated.
+In addition, medication overview table where number of participants for each 
+group considering different ATC levels (atc 2, atc 3 and atc 4) is shown.
+
+Note that medicational is confounded with disease status, thus attention is 
+required in result interpretation.
+In this analysis we investigate the difference in protein concentrations in 
+subjects under some medical treatment. 
+To investigate deeply what is affected with medication and disease, additional 
+analyses have to be performed.      
+
+
+# Data import
+
+Below we load the data and all required libraries. The data is loaded from the
+CHRIS TDFF modules.
+
+```{r data-libraries}
+library(chrisUtils)
+library(chrisData)
+library(RColorBrewer)
+library(pander)
+library(pheatmap)
+library(DT)
+library(ggfortify)
+library(ggplot2)
+library(ggpubr)
+library(reshape2)
+library(plotly)
+options(rgl.useNULL = TRUE)
+library(rgl)
+library(readxl)
+library(writexl)
+library(tidyfr)
+library(atc)
+mdl <- data_module("chris_scanningswath_proteins", "1.0.0.1", chris_path)
+prot_data <- data(mdl)
+prot_ann <- labels(mdl)
+stopifnot(all(colnames(prot_data) == rownames(prot_ann)))
+colnames(prot_data) <- prot_ann$description
+rownames(prot_ann) <- prot_ann$description
+## define the columns with protein concentrations
+proteins <- rownames(prot_ann)[prot_ann$Genes != ""]
+```
+
+Before proceeding with the data analysis we remove the POOL samples. In addition
+we restrict to samples from the CHRIS study.
+
+```{r remove-POOLs-NAFLDs, message = FALSE, warning = FALSE}
+prot_data <- prot_data[grep("^001", rownames(prot_data)), ]
+```
+
+Next we define the various variables which will be included in the analysis.
+First we define and add the BMI data, both as a numeric value, but also using
+the BMI categories. For the BMI categories we are using *2* (18.5 - <25) as
+baseline since that is supposed to be the *normal*.
+
+```{r define-variables-bmi, message = FALSE, warning = FALSE}
+clin <- chrisData("clinical")
+rownames(clin) <- clin$AID
+## Adding this information to the colData
+prot_data$BMI <- clin[rownames(prot_data), "x0an03q"]
+prot_data$BMIcat <- factor(as.integer(clin[rownames(prot_data), "x0an03b"]),
+                           levels = c("2", "1", "3", "4"))
+```
+
+We also define the season in which samples were collected from the study
+participants and add the age and sex information for each study participant.
+
+```{r define-variables-general-info, message = FALSE}
+## add here phenotype data from chrisData and recalculate season from exam day
+gen_info <- chrisData("general_information", release = "baseline")
+rownames(gen_info) <- gen_info$AID
+prot_data$Season <- as.factor(season(gen_info[rownames(prot_data), "x0_examd"]))
+prot_data$Sex <- gen_info[rownames(prot_data), "x0_sex"]
+prot_data$Age <- gen_info[rownames(prot_data), "x0_age"]
+```
+
+Import information for pregnancy:
+
+```{r define-variables-pregnant, message = FALSE}
+interview_info <- chrisData("interview", release = "baseline")
+rownames(interview_info) <- interview_info$AID
+## Add pregnancy information
+prot_data$Pregnant <- interview_info[rownames(prot_data), "x0wo05"]
+```
+
+A categorical variable for fasting status is defined based self-reported data
+from the participants' interview.
+
+```{r define-variables-fasting, message = FALSE}
+## add number of people reporting fasting status (`x0bc12` from `chrisData`
+## `"labdata"`)
+labdata_info <- chrisData("labdata", release = "baseline")
+rownames(labdata_info) <- labdata_info$AID
+prot_data$Fasting <- labdata_info[rownames(prot_data), "x0bc12"]
+```
+
+We next define the categorical variable for *hormonal contraceptives* using the
+ATC level 3 medication information from CHRIS. In particular, we define the
+trait using the ATC3 categories *HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE* and
+*ANTIANDROGENS*. This definition is similar to the one in Ramsey et al
+[@ramsey_variation_2016] that considered women taking oral contraceptives.
+
+```{r, warning = FALSE}
+## approach 1
+medi <- chrisData("drugs_1")
+med <- medi[medi$AID %in% rownames(prot_data), ]
+med <- med[!is.na(med$x0dd03), ]
+med$atc_2 <- toAtcLevel(med$x0dd03, level = 2)
+med$atc_3 <- toAtcLevel(med$x0dd03, level = 3)
+med$atc_4 <- toAtcLevel(med$x0dd03, level = 4)
+atc_df <- as.data.frame(atc)
+med$atc_2_name <- atc_df[match(med$atc_2, atc_df$key), "name"]
+med$atc_3_name <- atc_df[match(med$atc_3, atc_df$key), "name"]
+med$atc_4_name <- atc_df[match(med$atc_4, atc_df$key), "name"]
+## Subset to selected sex hormone treatment.
+med_sex_horm <- med[med$atc_3_name %in%  
+                    c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+                      "ANTIANDROGENS"), ]
+prot_data$Sex_horm <- "No"
+prot_data$Sex_horm[match(med_sex_horm$AID, rownames(prot_data))] <- "Yes"
+prot_data$Sex_horm <- factor(prot_data$Sex_horm,
+                             levels = c("No", "Yes"))
+summary(prot_data$Sex_horm)
+```
+ 
+We further remove all individuals with missing values for any of the required
+variables (age, sex, fasting and BMI) as well as pregnant women.
+
+```{r}
+nas <- is.na(prot_data[, c("Sex", "Fasting", "Age", "BMIcat")])
+prot_data <- prot_data[rowSums(nas) == 0, ]
+## remove pregnant women
+rem <- c(which(prot_data$Pregnant == "Yes"),
+         which(prot_data$Pregnant == "Don't know, possible"))
+prot_data <- prot_data[-rem, ]
+```
+
+Summary for the final data set.
+
+```{r}
+prot_data[, c("Sex", "Fasting", "Age", "Season", "BMIcat",
+              "Pregnant", "Fasting", "Sex_horm")] %>% summary()
+```
+
+
+# Evaluating medication status
+
+We next analyze all medication taken by subjects in our analyses to determine if 
+protein levels are affected by some medication intake.
+Subset of data where medications are taken up to 2 times per week is considered 
+excluding where medications are taken less frequent.
+
+```{r}
+##
+medi <- medi[!is.na(medi$x0dd03), ]
+medi <- medi[medi$x0dd03 != "C", ]
+## use subset where medications are taken up to 2x per week excluding all that  
+## have an interval of one month or even a year (or NA). 
+medi <- medi[medi$x0dd13 %in% 
+      c("daily", "every 2. day", "every 3. day", "every 4. day = 2x per week"),]           
+```
+
+The ATC code (i.e. the code from the WHO Anatomical Therapeutic Chemical
+classification system) is provided in column `"x0dd03"`, the 3rd level
+classification term for each drug is provided in column `"x0dd05"`.   
+  
+```{r}
+##
+medi$atc3_code <- toAtcLevel(medi$x0dd03, 3)
+## Extracting all data for ATC level 3 from the database
+atc_3 <- atcs(atc, filter = ~ level == 3)
+rownames(atc_3) <- atc_3$key
+
+## merging this information into the medication data
+medi$atc3 <- atc_3[medi$atc3_code, "name"]
+## Subset to only chrism AIDs
+medi_sub <- medi[medi$AID %in% rownames(prot_data),]
+```
+
+We're next counting for each ATC level 3 medication the number of (distinct)
+participants and showing a table with the summary of medication applied to at 
+least 15 subjects.
+
+```{r, results = "asis"}
+level3 <- split(medi$AID, medi$atc3)
+level3 <- lapply(level3, unique)
+level3_sub <- split(medi_sub$AID, medi_sub$atc3)
+level3_sub <- lapply(level3_sub, unique)   
+medi_sub_summary <- data.frame(medication = names(level3_sub),
+                              count = lengths(level3_sub))
+tab <- medi_sub_summary[medi_sub_summary$count > 14, ]
+tab <- tab[order(tab$count, decreasing = TRUE), ]
+rownames(tab) <- NULL
+pandoc.table(tab, style = "rmarkdown", split.tables = Inf,
+      caption = "Most frequent medication applied to chrism population (ATC 3)")
+```
+
+We also evaluate the overlap of subjects taking multiple medications.
+
+```{r overlap-medication, fig.path = IMAGE_PATH, fig.cap = "Medication overlap", echo = FALSE}
+overlap_matrix <- matrix(0, ncol = nrow(tab),
+                         nrow = length(unique(unlist(level3_sub))))
+rownames(overlap_matrix) <- unique(unlist(level3_sub))
+colnames(overlap_matrix) <- tab$medication
+for (n in colnames(overlap_matrix)) {
+    overlap_matrix[level3_sub[[n]], n] <- 1
+}
+overlap_matrix <- cbind(overlap_matrix, L4 = rep(0, nrow(overlap_matrix)))
+library(UpSetR)
+upset(as.data.frame(overlap_matrix), nset = ncol(overlap_matrix))
+```
+
+Considering selected 27 medication groups, seems that there is little overlap 
+between medications, and most of participants take one medication.
+
+```{r}
+Tab <- unlist(lapply(tab$medication, 
+                              function(treat) level3_sub[[treat]]))
+```
+
+There are `r length(unique(Tab))` subjects which takes any medication 
+(considering 27 medications groups) whhich is  
+`r round((length(unique(Tab))/nrow(prot_data))*100, 2)` % of our subjects.
+
+In next plot sorted number of medications per subject is visualized: 
+
+```{r, fig.path = IMAGE_PATH, fig.width=10, fig.height=6}
+plot(as.numeric(sort(table(Tab))), xlab = "Subjects", 
+                                   ylab = "Number of medications", 
+                                   main = "Number of medications per subjcet")
+```
+
+
+# Linear regression analyses
+
+In this analysis, two aproaches are tested. In the first: one medication status 
+at the time is analysed. In the second: all medications are considered 
+simultaniusly!
+
+To identify proteins affected with different medication therapies, linear 
+regression models are fitted for all proteins separately (as response) and sex, 
+age, fasting status, BMI and  medication treatment (one at the time-approach 1 
+and all together-approach 2) as a covariates. 
+Model coefficients and p-values are provided. Raw p-values are adjusted for 
+multiple hypothesis testing with the method from Bonferroni.
+Additionally, to obtain comparable coefficients, prior to linear modelling all 
+the variables are standardized to zero mean and unit variance (note that this 
+does not influence the linear models since they are affine equivariant).
+In autoscaled data, difference in one unit corresponds to standard deviation of 
+1. This parameter will be called "effect size" and will be use to evaluate group
+differences.
+We next define criteria to call protein *significant*. Hence we evaluate whether 
+we could combine the criteria for *statistical significance* (the p-value) with 
+another criteria that would allow us to define the proteein that are the 
+*strongest* associated with the contrast of interest. 
+In our approach, we require that the difference in concentrations for a 
+significant protein is larger than the *technical variance* for the same 
+protein. Technical variance of an analyte is estimated by the coefficient of 
+variation of the analyte in QC CHRIS Pool samples.
+
+## Approach 1: one medication status separately
+
+In this section, one medication status at the time is analysed.
+
+```{r functions}
+## make a function for LM
+FunForLinReg <- function(AnalyteName, Data) {
+    Analyte <- Data[, AnalyteName]
+    LMReg <- lm(Analyte ~ Sex + Age + Fasting + BMIcat + Class,      
+                data = Data)
+    res <- coef(summary(LMReg))[-1, ]
+    p.Values <- data.frame(c(res["ClassYes", 1],
+                             res["ClassYes", 4]))
+    names(p.Values) <- AnalyteName
+    rownames(p.Values) <- c("coef", "pValue")
+    return(p.Values)
+}
+
+#' Calculate the (absolute) difference in abundance expressed as a percentage
+#' based on a (log2) coefficient.
+diff_percentage <- function(x) {
+    (2^abs(x) - 1) * 100           
+}
+
+## make function to define affected metabolites with different medications
+MedStatsFunction <- function(treat)  {
+Class <- rep("No", nrow(prot_data))
+Class[rownames(prot_data) %in% level3_sub[[treat]]] <- "Yes"
+DataForLM <- cbind.data.frame(Class, prot_data)
+
+## do it in one run
+LMRegtests <- do.call(cbind.data.frame,
+                        lapply(colnames(DataForLM[, proteins]),
+                               function(x) FunForLinReg(x, DataForLM)))
+Test_output <- t(LMRegtests)
+adj_pVal <- p.adjust(Test_output[,"pValue"], method = "bonferroni")
+
+## Effect size
+## perform data normalisation (autoscaling)
+DataForLM_scaled <- DataForLM
+DataForLM_scaled[,proteins] <- scale(DataForLM[,proteins],
+                                               scale = TRUE)
+## do it in one run
+LMRegtests_AS <- do.call(
+    cbind.data.frame,
+    lapply(proteins,
+           function(x) FunForLinReg(x, DataForLM_scaled)))
+EffectSize <- t(LMRegtests_AS["coef",])
+colnames(EffectSize) <- "EffectSize"
+Test_output <- cbind(Test_output, adj_pVal, EffectSize)
+
+
+#' define which metabolites are considered significant: require p-value < 0.05
+#' and difference in concentration > 2 * CV_QC (expressed in %)
+sign_p <- Test_output[,"adj_pVal"] < 0.05
+diff_perc <- diff_percentage(Test_output[, "coef"])
+sign_cv <- sign_p &
+                  diff_perc > 100 * prot_ann[proteins, "cv_qc_chris"]
+## consider significant only
+Test_sign <- Test_output[which(sign_cv == TRUE),]
+ 
+if (is.matrix(Test_sign)) {
+Ordered_test <- Test_sign[order(Test_sign[,"pValue"]), ]
+Ordered_test <- cbind.data.frame(Ordered_test, prot_ann[rownames(Ordered_test), 
+                     c("long_description", "Genes")])
+} else {
+Ordered_test <- c(names(which(sign_cv == TRUE)), Test_sign)
+Ordered_test <- c(Ordered_test, prot_ann[names(which(sign_cv == TRUE)), 
+                     c("long_description", "Genes")])
+}
+#return(pandoc.table(Ordered_test, style = "rmarkdown",
+#   caption = paste0("Linear regression output: ", treat)))
+return(Ordered_test)
+}
+
+                         
+## function to list the number of cases, controls, NAs for each medication
+ClassSummaryFunction <- function(treat)  {
+Class <- rep("No", nrow(prot_data))
+Class[rownames(prot_data) %in% level3[[treat]]] <- "Yes"
+ClassSummary <- table(Class, useNA = "always")
+return(ClassSummary)
+}
+```
+
+### "HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE")
+```
+
+ 
+### "THYROID PREPARATIONS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("THYROID PREPARATIONS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("THYROID PREPARATIONS")
+```
+
+### "ANTITHROMBOTIC AGENTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTITHROMBOTIC AGENTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTITHROMBOTIC AGENTS")
+```
+
+### "LIPID MODIFYING AGENTS, PLAIN"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("LIPID MODIFYING AGENTS, PLAIN"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("LIPID MODIFYING AGENTS, PLAIN")
+```
+
+### "ACE INHIBITORS, PLAIN"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ACE INHIBITORS, PLAIN"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ACE INHIBITORS, PLAIN")
+```
+
+### "BETA BLOCKING AGENTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("BETA BLOCKING AGENTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("BETA BLOCKING AGENTS")
+```
+
+### "ANTIDEPRESSANTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIDEPRESSANTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIDEPRESSANTS")
+```
+
+### "ANGIOTENSIN II ANTAGONISTS, COMBINATIONS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANGIOTENSIN II ANTAGONISTS, COMBINATIONS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANGIOTENSIN II ANTAGONISTS, COMBINATIONS")
+```
+
+### "DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)")
+```
+
+### "SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS")
+```
+
+### "ANGIOTENSIN II ANTAGONISTS, PLAIN"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANGIOTENSIN II ANTAGONISTS, PLAIN"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANGIOTENSIN II ANTAGONISTS, PLAIN")
+```
+
+### "CALCIUM"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("CALCIUM"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("CALCIUM")
+```
+
+### "ACE INHIBITORS, COMBINATIONS" 
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ACE INHIBITORS, COMBINATIONS" ), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ACE INHIBITORS, COMBINATIONS" )
+```
+
+### "BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS")
+```
+
+### "ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS")
+```
+
+### "CONTRACEPTIVES FOR TOPICAL USE" 
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("CONTRACEPTIVES FOR TOPICAL USE"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("CONTRACEPTIVES FOR TOPICAL USE")
+```
+
+### "DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY")
+```
+
+### "ANTIGOUT PREPARATIONS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIGOUT PREPARATIONS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIGOUT PREPARATIONS")
+```
+
+### "ANTIEPILEPTICS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIEPILEPTICS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIEPILEPTICS")
+```
+
+### "HYPNOTICS AND SEDATIVES"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("HYPNOTICS AND SEDATIVES"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("HYPNOTICS AND SEDATIVES")
+```
+                                       
+### "ANTIGLAUCOMA PREPARATIONS AND MIOTICS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIGLAUCOMA PREPARATIONS AND MIOTICS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIGLAUCOMA PREPARATIONS AND MIOTICS")
+```
+
+### "ADRENERGICS, INHALANTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ADRENERGICS, INHALANTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ADRENERGICS, INHALANTS")
+```
+
+### "ANXIOLYTICS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANXIOLYTICS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANXIOLYTICS")
+```
+                                           
+### "ANTIPSYCHOTICS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIPSYCHOTICS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIPSYCHOTICS")
+```
+
+### "PROGESTOGENS AND ESTROGENS IN COMBINATION"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("PROGESTOGENS AND ESTROGENS IN COMBINATION"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("PROGESTOGENS AND ESTROGENS IN COMBINATION")
+```
+
+### "ANTIANDROGENS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("ANTIANDROGENS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("ANTIANDROGENS")
+```
+
+### "DOPAMINERGIC AGENTS"
+
+```{r, results = "asis"}
+pandoc.table(MedStatsFunction ("DOPAMINERGIC AGENTS"), 
+             style = "rmarkdown", split.table = Inf)
+```
+
+The number of cases, controls and NAs in this medication group:
+
+```{r}
+ClassSummaryFunction("DOPAMINERGIC AGENTS")
+```
+
+All results with significant effect sizes are presented in figure:
+
+```{r, fig.width = 15, fig.height = 8}
+
+## create result matrix
+matR <- matrix(NA, nrow = length(proteins), ncol = 27)
+rownames(matR) <- proteins
+colnames(matR) <- tab$medication 
+## and extract all info
+for (x in 1:27){
+rOut <-  as.data.frame(MedStatsFunction(tab$medication[x]))
+if (nrow(rOut) > 1) {
+Pr <- rownames(rOut)
+}else{
+Pr <- rOut[[1]]
+}
+matR [Pr, x]<- as.numeric(rOut$EffectSize) 
+} 
+
+## remove rows with all NAs (without significant)
+matR2 <- matR[-which(rowSums(is.na(matR)) == 27),]
+##
+matR2 <- round(matR2, 2)
+## in long format
+meltED <- melt(as.matrix(matR2))
+## add "long_description" & "Genes"
+meltED <- cbind.data.frame(meltED, prot_ann[match(meltED$Var1, rownames(prot_ann)), 
+                     c("long_description", "Genes")])
+
+meltED %>% 
+      ggplot(aes(Var2, Var1, fill=value, label=value)) +
+      geom_tile() +
+      labs(x = NULL, y = NULL, fill = "Effect Size", title = "Effect Size", 
+      subtitle = "Only significant effect sizes shown") + 
+      scale_fill_gradient2(mid = "#FBFEF9", low = "#0C6291", high = "#A63446") +
+      geom_text(size = 2.5) +
+      theme_classic() +
+      scale_x_discrete(expand=c(0,0)) +
+      scale_y_discrete(expand=c(0,0)) +
+      theme(text = element_text(family = "Roboto"), 
+      axis.text.x = element_text(angle = 15, hjust = 1, size = 7), 
+      axis.text.y = element_text(hjust = 1, size = 7))
+```
+
+The same figure but with protein descriptions on y-axis:
+
+```{r, results = "asis", echo = FALSE, fig.width = 15, fig.height = 8}
+meltED %>% 
+      ggplot(aes(Var2, long_description, fill=value, label=value)) +
+      geom_tile() +
+      labs(x = NULL, y = NULL, fill = "Effect Size", title = "Effect Size", 
+      subtitle = "Only significant effect sizes shown") + 
+      scale_fill_gradient2(mid = "#FBFEF9", low = "#0C6291", high = "#A63446") +
+      geom_text(size = 2.5) +
+      theme_classic() +
+      scale_x_discrete(expand=c(0,0)) +
+      scale_y_discrete(expand=c(0,0)) +
+      theme(text = element_text(family = "Roboto"), 
+      axis.text.x = element_text(angle = 15, hjust = 1, size = 7), 
+      axis.text.y = element_text(hjust = 1, size = 7))
+```
+
+
+## Approach 2: all medications simultaniusly
+
+In this section, all medications are considered simultaniusly in one linear 
+regression equation!
+
+First, variables are created for top 27 medication groups. Summary info is 
+presented: 
+
+```{r function-medication-classes}
+## make function to define class of affected subjects with medications
+ClassFunction <- function(treat)  {
+Class <- rep("No", nrow(prot_data))
+Class[rownames(prot_data) %in% level3_sub[[treat]]] <- "Yes"
+return(Class)
+}
+
+## do it in one run
+MedClasses <- do.call(
+    cbind.data.frame,
+    lapply(tab$medication,
+           function(x) ClassFunction(x)))
+## fix cplumnames
+colnames(MedClasses) <- tab$medication         
+
+apply(MedClasses, 2, table)
+```
+
+Medication info from all 27 groups are used in linear regression equation!
+
+
+```{r functions-approach-2}
+
+## make a function for LM
+FunForLinReg2 <- function(AnalyteName, Data) {
+
+#AnalyteName <- "P02768"
+## medication info is merged with proteomics data
+Data2 <- cbind.data.frame(Data[,c("Sex", "Age", "Fasting", "BMIcat")], 
+                          MedClasses)
+
+    Analyte <- Data[, AnalyteName]
+    LMReg <- lm(Analyte ~ .,      
+                data = Data2)    
+    res <- coef(summary(LMReg))[-1, ]
+    p.Values <- data.frame(c(res[, 1],
+                             res[, 4]))
+    names(p.Values) <- AnalyteName
+    rownames(p.Values) <- c(paste0("coef_", rownames(res)),
+                            paste0("p-value_", rownames(res)))
+    return(p.Values)
+}
+## do it in one run
+LMRegtests2 <- do.call(
+    cbind, lapply(proteins, function(x) FunForLinReg2(x, prot_data)))
+Test_output2 <- t(LMRegtests2)
+## Adjusting for multiple hypothesis testing
+adjp <- apply(Test_output2[, grep("p-value", colnames(Test_output2))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+Test_output2 <- cbind(Test_output2, adjp)
+```
+
+To obtain comparable coefficients, prior to linear modelling all the variables
+are standardized to zero mean and unit variance (note that this does not
+influence the linear models since they are affine equivariant).
+In autoscaled data, difference of 1 corresponds to standard deviation of 1.
+This parameter will be called "effect size" and will be use to evaluate group
+differences.
+
+```{r, message = FALSE}
+## perform data normalization (autoscaling)
+prot_data_AS <- prot_data
+prot_data_AS[, proteins] <- scale(prot_data_AS[, proteins], scale = TRUE)
+## do it in one run
+LMRegtests_AS2 <- do.call(cbind.data.frame,
+                         lapply(proteins,
+                                function(x) FunForLinReg2(x, prot_data_AS)))
+Test_output_AS2 <- t(LMRegtests_AS2)
+EffectSize <- Test_output_AS2[, grep("coef", colnames(Test_output_AS2))]
+colnames(EffectSize) <- sub("coef", "effect_size", colnames(EffectSize))
+```
+
+We next define criteria to call proteins *significant*. Due the size of the data
+set proteins would be called significant, even if their difference in
+concentrations is only very small. Hence we evaluate whether we could combine
+the criteria for *statistical significance* (the p-value) with another criteria
+that would allow us to define the proteins that are the *strongest* associated
+with the contrast of interest.
+
+```{r significant-effect-size}
+comps <- colnames(Test_output2)[grep("coef", colnames(Test_output2))]
+sign_p <- Test_output2[, grep("p-adj", colnames(Test_output2))] < 0.05
+colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
+## Define significant analytes based on effect size.
+cut_effect_size <- 0.5
+sign_es <- sign_p &
+    abs(EffectSize) > cut_effect_size
+sign_es[, "significant_Age"] <- sign_p[, "significant_Age"]
+```
+
+We require in addition to the *statistical significance* that the difference in
+concentrations for a protein is larger than its *technical variance*. Technical
+variance of an protein is estimated by the coefficient of variation of the
+protein in QC CHRIS Pool samples.
+
+Below we add thus evaluate for each protein and comparison whether it fulfills
+that criteria.
+
+```{r define-significant}
+#' Calculate the (absolute) difference in abundance expressed as a percentage
+#' based on a (log2) coefficient.
+diff_percentage <- function(x) {
+    (2^abs(x) - 1) * 100
+}
+comps <- colnames(Test_output2)[grep("coef", colnames(Test_output2))]
+diff_perc <- apply(Test_output2[, comps],
+                   MARGIN = 2, diff_percentage)
+colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
+#' define which metabolites are considered significant: require p-value < 0.05
+#' and difference in concentration > CV_QC (expressed in %)
+sign_cv <- lapply(comps, function(z) {
+    z <- sub("coef_", "", z)
+    sign_p[, paste0("significant_", z)] &
+        diff_perc[, paste0("diff_perc_", z)] > 100 *
+        prot_ann[proteins, "cv_qc_chris"]
+})
+sign_cv <- do.call(cbind, sign_cv)
+colnames(sign_cv) <- sub("coef", "significant", comps)
+#' Add the significant for numeric variable
+sign_cv[, "significant_Age"] <- sign_p[, "significant_Age"]
+```
+
+The number of proteins called significant or with an adjusted p-value smaller
+than 0.05 for each of the extracted coefficients are shown below.
+
+```{r table-sig-prot, results = "asis"}
+sig_tab <- data.frame(
+    `p_adj < 0.05` = colSums(sign_p),
+    cv = colSums(sign_cv),
+    check.names = FALSE)
+pandoc.table(
+    data.frame(no_sign = sig_tab, check.names = FALSE),
+    style = "rmarkdown", split.table = Inf,
+    caption = paste0("Number of significant proteins for each ",
+                     "comparison and definition of significance.",
+                     "cv: difference in concentration > * CV in QC samples."))
+```
+
+Results:
+
+```{r export-results, warning = FALSE}
+## Loading also the information whether an analyte was already identified
+## before to be significant.
+results <- cbind.data.frame(
+    prot_ann[proteins, c("description", "long_description", "PeptideNN",
+                         "PeptideNames", "Protein.Ids", "Protein.Names",
+                         "Genes", "Modified.Sequence", "Stripped.Sequence",
+                         "Precursor.Id", "cv_qc_chris")],
+    Test_output2,
+    EffectSize,
+    diff_perc,
+    sign_cv)
+colnames(results) <- sub("^description$", "Uniprot", colnames(results))
+colnames(results) <- sub("^long_description$", "Description", colnames(results))
+```
+
+The (static) table with the significant proteins for all 27 medication groups 
+are shown below:
+
+```{r, results = "asis", echo = FALSE}
+significant_table <- function(x, comparison = character(),
+                              columns = c("Genes", "Description",
+                                          "cv_qc_chris")) {
+ sigs <- x[, paste0("significant_", comparison)]
+ columns <- c(columns, paste0(c("coef_", "p-adj_", "effect_size_"), comparison))
+ tmp <- x[sigs, columns]
+ tmp <- tmp[order(tmp[, paste0("p-adj_", comparison)]), ]
+ colnames(tmp) <- sub(paste0("_", comparison), "", colnames(tmp))
+ tmp
+}
+
+medicGroup <-  c(
+   "`HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE`Yes", "`THYROID PREPARATIONS`Yes", 
+   "`ANTITHROMBOTIC AGENTS`Yes", "`LIPID MODIFYING AGENTS, PLAIN`Yes", 
+   "`ACE INHIBITORS, PLAIN`Yes", "`BETA BLOCKING AGENTS`Yes", 
+   "ANTIDEPRESSANTSYes", "`ANGIOTENSIN II ANTAGONISTS, COMBINATIONS`Yes", 
+   "`DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)`Yes", 
+   "`SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS`Yes", 
+   "`ANGIOTENSIN II ANTAGONISTS, PLAIN`Yes", "CALCIUMYes", 
+   "`ACE INHIBITORS, COMBINATIONS`Yes", 
+   "`BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS`Yes", 
+   "`ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS`Yes", 
+   "`CONTRACEPTIVES FOR TOPICAL USE`Yes", 
+   "`DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY`Yes", 
+   "`ANTIGOUT PREPARATIONS`Yes", "ANTIEPILEPTICSYes", 
+   "`HYPNOTICS AND SEDATIVES`Yes", "`ANTIGLAUCOMA PREPARATIONS AND MIOTICS`Yes", 
+   "`ADRENERGICS, INHALANTS`Yes", "ANXIOLYTICSYes", "ANTIPSYCHOTICSYes", 
+   "`PROGESTOGENS AND ESTROGENS IN COMBINATION`Yes", "ANTIANDROGENSYes", 
+   "`DOPAMINERGIC AGENTS`Yes")  
+   
+TableFunct <- function(medicGroup) {                        
+sig_tab <- significant_table(results, medicGroup)
+##
+pandoc.table(
+    sig_tab,
+    style = "rmarkdown", split.table = Inf,
+    caption = paste0("Significant proteins for ", medicGroup))    
+}    
+
+## do it in one run for all medications! 
+AllResults <- do.call(cbind.data.frame, lapply(medicGroup, 
+                                                function(x) TableFunct(x)))
+print(AllResults)                                              
+```
+
+All results with significant effect sizes are presented in figure:
+
+```{r, fig.width = 15, fig.height = 8}
+
+FM <- results[,paste0("effect_size_", medicGroup)] * 
+      results[,paste0("significant_", medicGroup)] 
+FM2 <- FM[rowSums(FM)!= 0,]
+FM2[FM2 == 0] <- NA
+## fix colnames
+colnames(FM2) <-  sub("effect_size_", "", colnames(FM2))
+colnames(FM2) <-  sub("Yes", "", colnames(FM2))
+FM2 <- round(FM2, 2)
+## in long format
+melted <- melt(as.matrix(FM2))
+## add "long_description" & "Genes"
+melted <- cbind.data.frame(melted, prot_ann[match(melted$Var1, rownames(prot_ann)), 
+                     c("long_description", "Genes")])
+
+melted %>% 
+      ggplot(aes(Var2, Var1, fill=value, label=value)) +
+      geom_tile() +
+      labs(x = NULL, y = NULL, fill = "Effect Size", title = "Effect Size", 
+      subtitle = "Only significant effect sizes shown") + 
+      scale_fill_gradient2(mid = "#FBFEF9", low = "#0C6291", high = "#A63446") +
+      geom_text(size = 2.5) +
+      theme_classic() +
+      scale_x_discrete(expand=c(0,0)) +
+      scale_y_discrete(expand=c(0,0)) +
+      theme(text = element_text(family = "Roboto"), 
+      axis.text.x = element_text(angle = 15, hjust = 1, size = 7), 
+      axis.text.y = element_text(hjust = 1, size = 7))
+```
+
+The same figure but with protein descriptions on y-axis:
+
+```{r, results = "asis", echo = FALSE, fig.width = 15, fig.height = 8}
+##
+melted %>% 
+      ggplot(aes(Var2, long_description, fill=value, label=value)) +
+      geom_tile() +
+      labs(x = NULL, y = NULL, fill = "Effect Size", title = "Effect Size", 
+      subtitle = "Only significant effect sizes shown") + 
+      scale_fill_gradient2(mid = "#FBFEF9", low = "#0C6291", high = "#A63446") +
+      geom_text(size = 2.5) +
+      theme_classic() +
+      scale_x_discrete(expand=c(0,0)) +
+      scale_y_discrete(expand=c(0,0)) +
+      theme(text = element_text(family = "Roboto"), 
+      axis.text.x = element_text(angle = 15, hjust = 1, size = 7), 
+      axis.text.y = element_text(hjust = 1, size = 7))
+```
+
+     
+# Medication overview table
+
+Medication overview table where number of participants for each group 
+considering different ATC levels (atc 2, atc 3 and atc 4) is shown.
+ 
+```{r}
+## ATC level 2
+medi$atc2_code <- toAtcLevel(medi$x0dd03, 2)
+## Extracting all data for ATC level 2 from the database
+atc_2 <- atcs(atc, filter = ~ level == 2)
+rownames(atc_2) <- atc_2$key
+## merging this information into the medication data
+medi$atc2 <- atc_2[medi$atc2_code, "name"]
+
+## ATC level 3
+medi$atc3_code <- toAtcLevel(medi$x0dd03, 3)
+## Extracting all data for ATC level 3 from the database
+atc_3 <- atcs(atc, filter = ~ level == 3)
+rownames(atc_3) <- atc_3$key
+## merging this information into the medication data
+medi$atc3 <- atc_3[medi$atc3_code, "name"]
+## Subset to only chrism AIDs
+medi_sub <- medi[medi$AID %in% rownames(prot_data),]
+
+## ATC level 4
+medi$atc4_code <- toAtcLevel(medi$x0dd03, 4)
+## Extracting all data for ATC level 4 from the database
+atc_4 <- atcs(atc, filter = ~ level == 4)
+# rownames(atc_4) <- atc_4$key
+# atc_4$key[427] and atc_4$key[428] 'H03CA'  is duplicated
+atc_4$key[428] <- "H03CA_2"
+rownames(atc_4) <- atc_4$key
+## merging this information into the medication data
+medi$atc4 <- atc_4[medi$atc4_code, "name"]
+## Subset to only chrism AIDs
+medi_sub <- medi[medi$AID %in% rownames(prot_data),]
+
+##
+atc_2 <- as.data.frame(sort(table(medi_sub$atc2), decreasing = TRUE))
+atc_2 <- cbind.data.frame(medi_sub[match (atc_2[,"Var1"], 
+                          medi_sub$atc2), "atc2_code"], atc_2) 
+colnames(atc_2) <- c("ATC2", "ATC2 name", "Count")
+##
+atc_3 <- as.data.frame(sort(table(medi_sub$atc3), decreasing = TRUE))
+atc_3 <- cbind.data.frame(medi_sub[match (atc_3[,"Var1"], 
+                          medi_sub$atc3), "atc3_code"], atc_3) 
+colnames(atc_3) <- c("ATC3", "ATC3 name", "Count")
+##
+atc_4 <- as.data.frame(sort(table(medi_sub$atc4), decreasing = TRUE))
+atc_4 <- cbind.data.frame(medi_sub[match (atc_4[,"Var1"], 
+                          medi_sub$atc4), "atc4_code"], atc_4) 
+colnames(atc_4) <- c("ATC4", "ATC4 name", "Count")
+##
+TabLe <- qpcR:::cbind.na(atc_2, atc_3, atc_4) 
+datatable(TabLe, caption = "Medication overview table")
+#pandoc.table(TabLe, style = "rmarkdown", caption = "Medication overview table")
+```
+
+# ATC group overlap table 
+
+From available dataset where ATC groups per IDs are present, unigue rows 
+considering "atc2", "atc3" and "atc4" are selected, that we can look at the 
+overlaps between ATC groups:
+
+```{r}
+AtcGrtoupOverlap2 <- unique(medi_sub[, c("atc2", "atc3", "atc4")])
+AtcGrtoupOverlap <- AtcGrtoupOverlap2[order(AtcGrtoupOverlap2$atc2),]
+datatable(AtcGrtoupOverlap, caption = "ATC group overlap table")
+```
+
+# Conclusion
+
+In this report, effect of medication intakes on protein concentrations are 
+investigated. Important to note that medicational treatments are taken by people 
+with related disease and thus trere is confoundings between medications and 
+disease status in the most of the medication groups except some specific cases 
+(eg. with hormonal contraceptives which are mostly consumed by healthy young 
+females). Thus, attention is necessary in result interpretation!
+Two approaches are tested. In the first approach one medication status at the 
+time is analysed. In the second approach, all medications are considered 
+simultaniusly!
+Results from both are simmilar, but there are more signifficant for 
+"CONTRACEPTIVES FOR TOPICAL USE" and less for other non-hormonal contraceptives!
+Thus, second approach where all medications are considered simultaniusly provide 
+clearer picture that the most of variations from medications comes from hormonal 
+contraceptives, and for others there are lower number of significant with 
+smaller effect sizes compared with hormonal contraceptives!
+From 3472 subjects, there are 1308 subjects which takes any medication (around 
+37%). From all medicated subjects around 40% take only one type of medication. 
+Rest takes more than one and up to 8 medications at the same time. Thus, second 
+approach where all medications are considered is apropriate and should be 
+considered!   
+
+
+# Session information
+
+R packages used for the analysis:
+
+```{r}
+sessionInfo()
+```          
