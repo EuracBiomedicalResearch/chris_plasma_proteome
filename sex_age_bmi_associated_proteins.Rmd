@@ -1,5 +1,5 @@
 ---
-title: "CHRIS MS-based plasma proteome: general overview and sex, age, BMI associated proteins"
+title: "CHRIS MS-based plasma proteome: general overview and sex, age, BMI and medication associated proteins"
 author: "Nikola Dordevic, Johannes Rainer"
 graphics: yes
 output:
@@ -49,7 +49,8 @@ spectrometry (MS)-based plasma proteome data set and describes the analysis to
 identify plasma proteins that are associated to age, sex and body mass index
 (BMI). The analysis is performed similarly to the analysis for the
 identification of age, sex and BMI-associated metabolites
-[@verri_hernandes_age_2022].
+[@verri_hernandes_age_2022]. In addition, influence of medication on the
+quantified plasma proteome is evaluated.
 
 # Data import
 
@@ -419,6 +420,82 @@ ggplotly_or_not(age_2, PLOTLY)
 ```
 
 Clearly there is an enrichment of young women among participants using hormonal contraceptives.
+
+```{r, eval = FALSE}
+contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+                                   "CONTRACEPTIVES FOR TOPICAL USE",
+                                   "ANTIANDROGENS"), ]
+table(contr$atc_3)
+
+G03H <- contr[contr$atc_3 == "G03H", ]
+G02B <- contr[contr$atc_3 == "G02B", ]
+G03A <- contr[contr$atc_3 == "G03A", ]
+
+table(G03H$atc_4_name)
+table(G02B$atc_4_name)
+table(G03A$atc_4_name)
+
+png("contraceptives_coloring.png", width = 10, height = 10, units = "cm",
+    res = 600, pointsize = 4)
+cols <- rep("#99999920", nrow(prot_data))
+cols[rownames(prot_data) %in% G03H$AID] <- "#FF0000FF"
+cols[rownames(prot_data) %in% G02B$AID] <- "#00FF00FF"
+cols[rownames(prot_data) %in% G03A$AID] <- "#0000FFFF"
+par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
+         xlim = c(-16, 9))
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
+       cex = 1.5)
+grid()
+dev.off()
+## Summary: green ones (G02B topical use) seem split half/half.
+
+
+png("contraceptives_topical_coloring.png", width = 10, height = 10,
+    units = "cm", res = 600, pointsize = 4)
+cols <- rep("#99999920", nrow(prot_data))
+cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BA", "AID"]] <- "#FF0000FF"
+cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BB", "AID"]] <- "#0000FFFF"
+par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
+         xlim = c(-16, 9))
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
+       cex = 1.5)
+grid()
+dev.off()
+
+## Now, that's fun: blue (G02BB, intravaginal) behave like oral contraceptives,
+## red (G02A, intrauterine) like "normal". Thats expected, since the
+## intrauterine contraceptives are expected to act mostly locally, while the
+## intravaginal mostly systemic (while by-passing the liver).
+
+```
 
 
 # Linear Regression analyses
