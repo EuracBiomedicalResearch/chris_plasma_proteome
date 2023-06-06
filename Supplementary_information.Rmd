@@ -325,6 +325,203 @@ pandoc.table(
 
 ```
 
+# Plasma proteins associated with medication (ATC level 3)
+
+Associations were evaluated for 27 ATC level 3 medications taken on a regular
+basis (at least twice per week) by more than 14 study participants. Significant
+associations are shown for each medication in the tables below. For 11
+medications no significant association was identified.
+
+```{r, results = "asis"}
+atc3 <- read_xlsx("data/xlsx/sex_age_bmi_associated_proteins/results_sex_age_bmi_atc3.xlsx")
+atc3 <- as.data.frame(atc3)
+
+atc_3_names <- rbind(
+    c("G03A", "HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+      ".HORMONAL.CONTRACEPTIVES.FOR.SYSTEMIC.USE.Yes"),
+    c("G03H", "ANTIANDROGENS", "ANTIANDROGENSYes"),
+    c("G02B", "CONTRACEPTIVES FOR TOPICAL USE",
+      ".CONTRACEPTIVES.FOR.TOPICAL.USE.Yes"),
+    c("M01A", "ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS",
+      ".ANTIINFLAMMATORY.AND.ANTIRHEUMATIC.PRODUCTS..NON.STEROIDS.Yes"),
+    c("N04B", "DOPAMINERGIC AGENTS", ".DOPAMINERGIC.AGENTS.Yes"),
+    c("A10B", "BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS",
+      ".BLOOD.GLUCOSE.LOWERING.DRUGS..EXCL..INSULINS.Yes"),
+    c("M04A", "ANTIGOUT PREPARATIONS", ".ANTIGOUT.PREPARATIONS.Yes"),
+    c("B01A", "ANTITHROMBOTIC AGENTS", ".ANTITHROMBOTIC.AGENTS.Yes"),
+    c("C07A", "BETA BLOCKING AGENTS", ".BETA.BLOCKING.AGENTS.Yes"),
+    c("G04C", "DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY",
+      ".DRUGS.USED.IN.BENIGN.PROSTATIC.HYPERTROPHY.Yes"),
+    c("N03A", "ANTIEPILEPTICS", "ANTIEPILEPTICSYes"),
+    c("R03A", "ADRENERGICS, INHALANTS", ".ADRENERGICS..INHALANTS.Yes"),
+    c("A12A", "CALCIUM", "CALCIUMYes"),
+    c("C10A", "LIPID MODIFYING AGENTS, PLAIN",
+      ".LIPID.MODIFYING.AGENTS..PLAIN.Yes"),
+    c("C09D", "ANGIOTENSIN II ANTAGONISTS, COMBINATIONS",
+      ".ANGIOTENSIN.II.ANTAGONISTS..COMBINATIONS.Yes"),
+    c("C09C", "ANGIOTENSIN II ANTAGONISTS, PLAIN",
+      ".ANGIOTENSIN.II.ANTAGONISTS..PLAIN.Yes")
+) |> as.data.frame()
+colnames(atc_3_names) <- c("atc", "name", "var")
+
+
+for (i in seq_len(nrow(atc_3_names))) {
+    tab <- atc3[atc3[, paste0("significant_", atc_3_names$var[i])],
+                c("Uniprot", "Genes",
+                  paste0("coef_", atc_3_names$var[i]),
+                  paste0("p.adj_", atc_3_names$var[i]),
+                  paste0("effect_size_", atc_3_names$var[i]))]
+    tab <- tab[order(tab[, paste0("p.adj_", atc_3_names$var[i])]), ]
+    colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
+                       "$ES$")
+    rownames(tab) <- NULL
+    pandoc.table(
+        tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+        split.cells = 50, style = "rmarkdown", digits = 3,
+        caption = paste0(
+            "Proteins significantly associated with ATC level 3 medication *",
+            atc_3_names$name[i], "* (ATC3 ", atc_3_names$atc[i], ").",
+            " $coef$ and $p_{adj}$: coefficient (representing the ",
+            "differential abundance in log2 scale) and p-value ",
+            "adjusted for multiple hypothesis testing. $ES$ effect size. ",
+            "Proteins are ordered by p-value."))
+}
+```
+
+# Plasma proteins associated with medication (ATC level 4)
+
+Associations were evaluated for 27 ATC level 4 medications taken on a regular
+basis (at least twice per week) by more than 14 study participants. The
+considered medications, numbers of participants and significant proteins are
+shown in the table below.
+
+```{r, results = "asis"}
+atc4_table <- data.frame(
+    ATC = c("H03AA", "G03AA, G03FA", "B01AC", "C10AA", "C09AA", "C07AB",
+            "C09DA", "N06AB", "A02BC", "C08CA", "C09CA", "A12AX", "C09BA",
+            "N05BA, N05CD", "G04CA, C02CA", "A10BA", "N06AX", "B01AA",
+            "M04AA", "G03AB, G03FB", "R03AK", "G02BA", "M01AE", "S01ED",
+            "G02BB", "N03AX", "H02AB, R03BA", "M01AB", "G03HB"),
+    Name = c("Thyroid hormones",
+             "Progestogens and estrogens, fixed combinations",
+             "Platelet aggregation inhibitors excl. heparin",
+             "HMG CoA reductase inhibitors", "ACE inhibitors, plain",
+             "Beta blocking agents, selective",
+             "Angiotensin II antagonists and diuretics",
+             "Selective serotonin reuptake inhibitors",
+             "Proton pump inhibitors", "Dihydropyridine derivatives",
+             "Angiotensin II antagonists, plain",
+             "Calcium, combinations with vitamin D and/or other drugs",
+             "ACE inhibitors and diuretics", "Benzodiazepine derivatives",
+             "Alpha-adrenoreceptor antagonists", "Biguanides",
+             "Other antidepressants", "Vitamin K antagonists",
+             "Preparations inhibiting uric acid production",
+             "Progestogens and estrogens, sequential preparations",
+             "Adrenergics in combination with corticosteroids or other drugs, excl. anticholinergics",
+             "Intrauterine contraceptives",
+             "Propionic acid derivatives",
+             "Beta blocking agents",
+             "Intravaginal contraceptives",
+             "Other antiepileptics",
+             "Glucocorticoids",
+             "Acetic acid derivatives and related substances",
+             "Antiandrogens and estrogens"),
+    Participants = c(262, 260, 211, 193, 156, 135, 109, 94, 92, 91, 74, 62,
+                     59, 51, 48, 43, 41, 37, 36, 34, 27, 25, 24, 21, 21, 21,
+                     18, 16, 16),
+    Proteins = c(0, 52, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 5, 4, 0, 14, 0,
+                 36, 1, 0, 0, 0, 35, 0, 2, 0, 38)
+)
+pandoc.table(
+    atc4_table, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+        split.cells = 50, style = "rmarkdown", digits = 3,
+        caption = paste0("Overview of association results for ATC level 4 ",
+                         "medications in the CHRIS study subset. Only ",
+                         "medications taken on a regular basis by more than ",
+                         "14 of the in total 3,632 study participants were ",
+                         "considered. Columns *Participants* and *Proteins* ",
+                         "list the number of participants taking the ",
+                         "medication and number of significantly associated ",
+                         "proteins."))
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_ATC4.png}\n",
+    sep = "")
+cat("  \\caption{Significant associations between proteins (rows) and ATC",
+    " level 4 medications (columns). Effect sizes (as a number and color coded)",
+    " are only shown for significant associations.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+```{r, results = "asis"}
+atc4 <- read_xlsx("data/xlsx/sex_age_bmi_associated_proteins/results_sex_age_bmi_atc4.xlsx")
+atc4 <- as.data.frame(atc4)
+
+atc4_table$var <- c(
+    ".Thyroid.hormones.Yes",
+    ".Progestogens.and.estrogens..fixed.combinations.Yes",
+    ".Platelet.aggregation.inhibitors.excl..heparin.Yes",
+    ".HMG.CoA.reductase.inhibitors.Yes",
+    ".ACE.inhibitors..plain.Yes",
+    ".Beta.blocking.agents..selective.Yes",
+    ".Angiotensin.II.antagonists.and.diuretics.Yes",
+    ".Selective.serotonin.reuptake.inhibitors.Yes",
+    ".Proton.pump.inhibitors.Yes",
+    ".Dihydropyridine.derivatives.Yes",
+    ".Angiotensin.II.antagonists..plain.Yes",
+    ".Calcium..combinations.with.vitamin.D.and.or.other.drugs.Yes",
+    ".ACE.inhibitors.and.diuretics.Yes",
+    ".Benzodiazepine.derivatives.Yes",
+    ".Alpha.adrenoreceptor.antagonists.Yes",
+    "BiguanidesYes",
+    ".Other.antidepressants.Yes",
+    ".Vitamin.K.antagonists.Yes",
+    ".Preparations.inhibiting.uric.acid.production.Yes",
+    ".Progestogens.and.estrogens..sequential.preparations.Yes",
+    ".Adrenergics.in.combination.with.corticosteroids.or.other.drugs..excl..anticholinergics.Yes",
+    ".Intrauterine.contraceptives.Yes",
+    ".Propionic.acid.derivatives.Yes",
+    ".Beta.blocking.agents.Yes",
+    ".Intravaginal.contraceptives.Yes",
+    ".Other.antiepileptics.Yes",
+    "GlucocorticoidsYes",
+    ".Acetic.acid.derivatives.and.related.substances.Yes",
+    ".Antiandrogens.and.estrogens.Yes")
+
+atc4_table <- atc4_table[atc4_table$Proteins > 0, ]
+atc4_table <- atc4_table[order(atc4_table$Proteins, decreasing = TRUE), ]
+
+for (i in seq_len(nrow(atc4_table))) {
+    tab <- atc4[atc4[, paste0("significant_", atc4_table$var[i])],
+                c("Uniprot", "Genes",
+                  paste0("coef_", atc4_table$var[i]),
+                  paste0("p.adj_", atc4_table$var[i]),
+                  paste0("effect_size_", atc4_table$var[i]))]
+    tab <- tab[order(tab[, paste0("p.adj_", atc4_table$var[i])]), ]
+    colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
+                       "$ES$")
+    rownames(tab) <- NULL
+    pandoc.table(
+        tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+        split.cells = 50, style = "rmarkdown", digits = 3,
+        caption = paste0(
+            "Proteins significantly associated with ATC level 4 medication *",
+            atc4_table$Name[i], "* (ATC4 ", atc4_table$ATC[i], ").",
+            " $coef$ and $p_{adj}$: coefficient (representing the ",
+            "differential abundance in log2 scale) and p-value ",
+            "adjusted for multiple hypothesis testing. $ES$ effect size. ",
+            "Proteins are ordered by p-value."))
+}
+```
+
+
+
 
 # Extended Material and Methods
 

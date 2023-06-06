@@ -1900,6 +1900,10 @@ results_atc4 <- data.frame(
     sign_cv)
 
 #' Export results.
+colnames(results_atc4) <- sub("^description$", "Uniprot",
+                              colnames(results_atc4))
+colnames(results_atc4) <- sub("^long_description$", "Description",
+                              colnames(results_atc4))
 write_xlsx(
     results_atc4, path = paste0(dr, "/results_sex_age_bmi_atc4.xlsx"))
 
