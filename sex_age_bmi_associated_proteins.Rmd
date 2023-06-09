@@ -2081,6 +2081,57 @@ grid()
 dev.off()
 ```
 
+# Comparison of results with Enroth et al
+
+Enroth et al [@enroth_systemic_2018] evaluated the impact of antihypertensive
+and lipid-lowering medication on plasma proteins on Olink-based plasma proteome
+data. Below we load their results and evaluate the overlap of their results with
+ours. We base the mapping on the UniProt identifiers and gene names available
+for both data sets.
+
+```{r}
+enroth <- read_xlsx("data/xlsx/41598_2018_23860_MOESM1_ESM.xlsx", sheet = 1) |>
+as.data.frame()
+
+tmp <- strsplit(proteins, split = ";")
+enroth_mapping <- data.frame(
+    ms_id = rep(proteins, lengths(tmp)),
+    ms_uniprot = unlist(tmp, use.names = FALSE)
+)
+enroth_mapping$ms_genes = prot_ann[enroth_mapping$ms_id, "Genes"]
+enroth_mapping$ol_uniprot <- NA_character_
+for (i in seq_len(nrow(enroth_mapping))) {
+    idx <- which(enroth[, "Uniprot Id"] == enroth_mapping$ms_uniprot[i])
+    if (!length(idx))
+        idx <- which(enroth[, "Gene"] == enroth_mapping$ms_genes[i])
+    if (length(idx))
+        enroth_mapping$ol_uniprot[i] <- paste0(enroth[idx, "Uniprot Id"],
+                                               collapse = "; ")
+}
+
+```
+
+Overlap between the two data sets if for
+`r sum(!is.na(enroth_mapping$ol_uniprot))` proteins.
+
+
+# Comparison of results with Ramsey et al
+
+Ramsey et al [@ramsey_variation_2016] evaluated influence of oral contraceptives
+and menstrual cycle on plasma protein levels.
+
+```{r}
+ramsey <- read_xlsx("data/xlsx/Ramsey.xlsx") |> as.data.frame()
+
+hcu_sig <- results_hcu[results_hcu$significant_HCUYes, ]
+sum(ramsey$UniProt %in% rownames(hcu_sig))
+
+nrow(ramsey)
+
+plot(results_hcu[ramsey$UniProt, "coef_HCUYes"], ramsey$coef)
+```
+
+
 # Data, figures etc for the manuscript's supplement
 
 ```{r}
