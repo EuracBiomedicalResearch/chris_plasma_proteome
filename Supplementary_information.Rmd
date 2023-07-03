@@ -38,6 +38,21 @@ for (i in seq_along(fls)) {
     }
 ```
 
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/Figure_CV.png}\n",
+    sep = "")
+cat("  \\caption{Distribution of coefficients of variation (CV, in \\%) before",
+    " and after data pre-processing. Left: CVs of raw peptide data ",
+    "(DIA-NN normalized data). Right: CVs of protein data after ",
+    "normalization}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
 
 ## Principal Component Analysis and influence of hormonal contraceptive use
 
@@ -57,11 +72,11 @@ cat("\\end{figure}\n")
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
+cat("  \\includegraphics[width=0.5\\textwidth]{",
     "images/manuscript/supplement/Figure_S150.png}\n", sep = "")
 cat("  \\caption{Abundance of the protein Angiotensinogen (AGT) in study ",
-    "participants using hormonal contraceptives (HCU) and female and male ",
-    "participants that don't.}\n",
+    "participants using hormonal contraceptives ",
+    "(HCU) and female and male participants that don't.}\n",
     sep = "")
 cat("\\end{figure}\n")
 

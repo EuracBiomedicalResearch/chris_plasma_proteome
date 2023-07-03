@@ -266,6 +266,24 @@ boxplot(ages, at = brks[-1] - 0.5, xlim = c(-16, 9), xaxt = "n",
         ylab = "Age", lwd = 0.75)
 grid()
 dev.off()
+
+## And again for the graphical abstract
+png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
+    res = 600, pointsize = 4)
+par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+         xlim = c(-16, 9))
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+       cex = 1)
+grid()
+dev.off()
 ```
 
 
@@ -380,14 +398,21 @@ f <- as.character(prot_data$Sex)
 f[prot_data$HCU == "Yes"] <- "HCU"
 f <- factor(f, levels = c("HCU", "Female", "Male"))
 png("images/manuscript/supplement/Figure_S150.png", width = 6.4,
-    height = 6.4, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+    height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 library(vioplot)
-par(mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n",
-    cex.main = 2.5)
+par(mfrow = c(1, 1), mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5,
+    cex.lab = 1.5, bty = "n", cex.main = 2.5)
 vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
         main = "P01019 (AGT)")
 grid(nx = NA, ny = NULL)
+
+## ## Distribution for SERPING1 (P05155;P05155-3)
+## vioplot(split(prot_data$`P05155;P05155-3`, f),
+##         ylab = expression(log[2]~abundance),
+##         main = "P05155;P05155-3 (SERPING1)")
+## grid(nx = NA, ny = NULL)
 dev.off()
+
 ```
 
 Most of the participants separating from the main group take indeed systemic
