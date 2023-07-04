@@ -38,6 +38,21 @@ for (i in seq_along(fls)) {
     }
 ```
 
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/Figure_CV.png}\n",
+    sep = "")
+cat("  \\caption{Distribution of coefficients of variation (CV, in \\%) before",
+    " and after data pre-processing. Left: CVs of raw peptide data ",
+    "(DIA-NN normalized data). Right: CVs of protein data after ",
+    "normalization}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
 
 ## Principal Component Analysis and influence of hormonal contraceptive use
 
@@ -57,11 +72,11 @@ cat("\\end{figure}\n")
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
+cat("  \\includegraphics[width=0.5\\textwidth]{",
     "images/manuscript/supplement/Figure_S150.png}\n", sep = "")
 cat("  \\caption{Abundance of the protein Angiotensinogen (AGT) in study ",
-    "participants using hormonal contraceptives (HCU) and female and male ",
-    "participants that don't.}\n",
+    "participants using hormonal contraceptives ",
+    "(HCU) and female and male participants that don't.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
@@ -125,6 +140,36 @@ pandoc.table(
         " in abundance in 10 years), effect size (for 10-year change) and ",
         "p-value adjusted for multiple hypothesis testing. ",
         "Proteins are ordered by p-value."))
+```
+
+The age association for the 2 most significant proteins is shown below.
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.8\\textwidth]{",
+    "images/manuscript/supplement/Figure_age_1.png}\n",
+    sep = "")
+cat("  \\caption{Age dependency of the protein IGFALS. Shown are sex, BMI, ",
+    "HCU and fasting status adjusted abundances against participants' age. ",
+    "The solid black line represents the linear regression line..}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.8\\textwidth]{",
+    "images/manuscript/supplement/Figure_age_2.png}\n",
+    sep = "")
+cat("  \\caption{Age dependency of the protein VTN. Shown are sex, BMI, ",
+    "HCU and fasting status adjusted abundances against participants' age. ",
+    "The solid black line represents the linear regression line..}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
 ```
 
 

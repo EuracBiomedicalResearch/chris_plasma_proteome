@@ -266,6 +266,24 @@ boxplot(ages, at = brks[-1] - 0.5, xlim = c(-16, 9), xaxt = "n",
         ylab = "Age", lwd = 0.75)
 grid()
 dev.off()
+
+## And again for the graphical abstract
+png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
+    res = 600, pointsize = 4)
+par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+         xlim = c(-16, 9))
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+       cex = 1)
+grid()
+dev.off()
 ```
 
 
@@ -380,14 +398,21 @@ f <- as.character(prot_data$Sex)
 f[prot_data$HCU == "Yes"] <- "HCU"
 f <- factor(f, levels = c("HCU", "Female", "Male"))
 png("images/manuscript/supplement/Figure_S150.png", width = 6.4,
-    height = 6.4, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+    height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 library(vioplot)
-par(mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n",
-    cex.main = 2.5)
+par(mfrow = c(1, 1), mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5,
+    cex.lab = 1.5, bty = "n", cex.main = 2.5)
 vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
         main = "P01019 (AGT)")
 grid(nx = NA, ny = NULL)
+
+## ## Distribution for SERPING1 (P05155;P05155-3)
+## vioplot(split(prot_data$`P05155;P05155-3`, f),
+##         ylab = expression(log[2]~abundance),
+##         main = "P05155;P05155-3 (SERPING1)")
+## grid(nx = NA, ny = NULL)
 dev.off()
+
 ```
 
 Most of the participants separating from the main group take indeed systemic
@@ -509,9 +534,14 @@ regression models are fitted for all proteins separately (as a response) and
 sex, age, fasting status and (categorical) BMI as a covariates (same as in
 [@verri_hernandes_age_2022]). In addition, and based on the observations from
 the previous section, a categorical variable representing use of hormonal
-contraceptives is included to adjust for the influence of this factor. Model
-coefficients and p-values are provided. Raw p-values are adjusted for multiple
-hypothesis testing with the method from Bonferroni.
+contraceptives is included to adjust for the influence of this factor. In this
+model, no interactions between variables are considered, although a relationship
+between BMI and sex seems to be present in the present data set. A sensitivity
+analysis evaluating the impact of considering in addition an interaction between
+BMI and sex is performed in one of the following sections.
+
+Raw p-values for each coefficient are adjusted for multiple hypothesis testing
+with the method from Bonferroni.
 
 ```{r, message=FALSE}
 ## Linear model LM1
@@ -809,35 +839,73 @@ pandoc.table(
     caption = paste0("Significant proteins for Age. "))
 ```
 
-Top 3 proteins according to tests p-values are visualized in scater plots with
-age and colored according sex.
-On the top, pearson correlation coefficients are present with their p-values.
-
+Top 3 proteins according to tests p-values are visualized in scatter plots with
+age and colored according sex. Instead of the actual concentrations, the
+residuals from a linear model fitted to the data including all covariates except
+age are used.
 
 ```{r, SP_Age_1_figure, fig.path = IMAGE_PATH, fig.width = 6, fig.height = 5}
 scatter_plot <- function(data, aes, protein) {
     ggplot(data, aes) +
-    geom_jitter(aes(colour = Sex, alpha = 0.8),
-    position=position_jitter(0.05)) +
+    geom_jitter(aes(colour = Sex), position=position_jitter(0.05)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
     panel.background = element_blank()) +
     ggpubr::stat_cor(method = "pearson", label.x.npc = "middle",
-    label.y.npc = "top", col="black") + labs(title = protein) +
+    label.y.npc = "top", col="black") +
+    labs(title = protein) +  ylab("Adjusted conc.") +
+    scale_color_manual(values=c("#0000ff80", "#ff000080")) +
+    geom_smooth(method = "lm", se = FALSE, color="black") +
     theme_bw()
     }
-a_1 <- scatter_plot(prot_data, aes(x = Age, y = `P35858;P35858-2`),
+
+LMReg_1 <- lm(`P35858;P35858-2` ~ Sex + Age + Fasting + BMIcat + HCU,
+              data = prot_data)
+LMReg_2 <- lm(`P35858;P35858-2` ~ Sex + Fasting + BMIcat + HCU,
+              data = prot_data)
+residualS <- data.frame(LMReg_2$residuals)
+ResData <- cbind.data.frame(model.frame(LMReg_1),residualS)
+
+a_1 <- scatter_plot(ResData, aes(x = Age, y = `LMReg_2.residuals`),
                     protein  = "P35858;P35858-2")
 ggplotly_or_not(a_1, PLOTLY)
+
+ggsave("images/manuscript/supplement/Figure_age_1.png", plot = a_1,
+       dpi = 600, width = 10, height = 5, units = "cm", scale = 2.5)
+
 ```
 
 ```{r, SP_Age_2_figure, fig.path = IMAGE_PATH, fig.width = 6, fig.height = 5}
-a_2 <- scatter_plot(prot_data, aes(x = Age, y = `P04004`), protein  = "P04004")
+LMReg_1 <- lm(`P04004` ~ Sex + Age + Fasting + BMIcat + HCU,
+              data = prot_data)
+LMReg_2 <- lm(`P04004` ~ Sex + Fasting + BMIcat + HCU,
+              data = prot_data)
+residualS <- data.frame(LMReg_2$residuals)
+ResData <- cbind.data.frame(model.frame(LMReg_1),residualS)
+##
+a_2 <- scatter_plot(ResData, aes(x = Age, y = LMReg_2.residuals),
+                    protein  = "P04004")
 ggplotly_or_not(a_2, PLOTLY)
+
+ggsave("images/manuscript/supplement/Figure_age_2.png", plot = a_2,
+       dpi = 600, width = 10, height = 5, units = "cm", scale = 2.5)
+
 ```
 
 ```{r, SP_Age_3_figure, fig.path = IMAGE_PATH, fig.width = 6, fig.height = 5}
-a_3 <- scatter_plot(prot_data, aes(x = Age, y = P02787), protein  = "P02787")
+LMReg_1 <- lm(`P02787` ~ Sex + Age + Fasting + BMIcat + HCU,
+              data = prot_data)
+LMReg_2 <- lm(`P02787` ~ Sex + Fasting + BMIcat + HCU,
+              data = prot_data)
+residualS <- data.frame(LMReg_2$residuals)
+ResData <- cbind.data.frame(model.frame(LMReg_1),residualS)
+##
+a_3 <- scatter_plot(ResData, aes(x = Age, y = LMReg_2.residuals),
+                    protein  = "P02787")
+
 ggplotly_or_not(a_3, PLOTLY)
+
+ggsave("images/manuscript/supplement/Figure_age_3.png", plot = a_3,
+       dpi = 600, width = 10, height = 5, units = "cm", scale = 2.5)
 ```
 
 **IGFALS** (insulin like growth factor binding protein acid labile subunit) is a
@@ -1067,7 +1135,7 @@ ggplotly_or_not(sh_5, PLOTLY)
 ```
 
 
-# Sensitivity analysis
+# Sensitivity analysis: impact of hormonal contraceptives on age, sex, BMI results
 
 We next conduct a sensitivity analysis to evaluate the influence of hormonal
 contraceptives on the results of potentially related traits such as sex or
@@ -1136,6 +1204,16 @@ pandoc.table(
                      "cv: difference in concentration > * CV in QC samples."))
 ```
 
+The distribution of (absolute) differences in coefficients between the two
+models:
+
+```{r}
+quantile(abs(Test_output[, "coef_SexFemale"] -
+             Test_output_sens[, "coef_SexFemale"]))
+quantile(abs(Test_output[, "coef_Age_10"] -
+             Test_output_sens[, "coef_Age_10"]))
+
+```
 
 
 ## Influence on sex-associated proteins
