@@ -142,7 +142,7 @@ pandoc.table(
         "Proteins are ordered by p-value."))
 ```
 
-The age association for the 3 most significant proteins is shown below.
+The age association for the 2 most significant proteins is shown below.
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
@@ -171,7 +171,6 @@ cat("  \\caption{Age dependency of the protein VTN. Shown are sex, BMI, ",
 cat("\\end{figure}\n")
 
 ```
-
 
 
 ## Body mass index associated plasma proteins
@@ -255,23 +254,6 @@ pandoc.table(
         "differential abundance in log2 scale) effect size and p-value ",
         "adjusted for multiple hypothesis testing. ",
         "Proteins are ordered by p-value."))
-
-```
-
-## Sensitivity analysis: interactions between sex and BMI
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
-    "images/manuscript/supplement/Figure_sensitivity_interaction.png}\n",
-    sep = "")
-cat("  \\caption{Comparison of effect sizes for models without (x-axis) and ",
-    "with interaction between sex and BMI (y-axis) for coefficients Sex ",
-    "(left), BMI category 3 against 2 (middle) and BMI category 4 against 2 ",
-    "(right).}\n",
-    sep = "")
-cat("\\end{figure}\n")
 
 ```
 
