@@ -1,6 +1,6 @@
 ---
 title: "CHRIS MS-based plasma proteome: general overview and sex, age, BMI and medication associated proteins"
-author: "Nikola Dordevic, Johannes Rainer"
+author: "Nikola Dordevic, Essi Hantikainen, Johannes Rainer"
 graphics: yes
 output:
   BiocStyle::html_document:
