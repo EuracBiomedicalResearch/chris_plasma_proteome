@@ -201,7 +201,68 @@ prot_data[, c("Sex", "Fasting", "Age", "Age_10", "Season", "BMIcat",
               "Pregnant", "Fasting")] %>% summary()
 ```
 
+
 This reduces the data set to `r nrow(prot_data)` individuals.
+
+We next evaluate the variance of protein abundances observed in the present data
+set.
+
+```{r}
+cv_study <- vapply(prot_data[proteins], function(z) {
+    z <- 2^z
+    (sd(z, na.rm = TRUE) / mean(z, na.rm = TRUE)) * 100
+}, numeric(1))
+cv_rel <- cv_study / (prot_ann[proteins, "cv_qc_chris"] * 100)
+```
+
+Top 30 proteins with highest absolute CV in study samples.
+
+```{r, results = "asis"}
+tab <- data.frame(
+    Genes = prot_ann[proteins, "Genes"],
+    cv_qc_chris = prot_ann[proteins, "cv_qc_chris"] * 100,
+    cv_study = cv_study,
+    cv_rel = cv_rel)
+
+tab_sub <- tab[order(tab$cv_study, decreasing = TRUE), ][1:30, ]
+pandoc.table(tab_sub, caption = "Top 30 proteins with largest CV.",
+             style = "rmarkdown", split.table = Inf)
+```
+
+Proteins with the lowest absolute CV.
+
+```{r, results = "asis"}
+tab_sub <- tab[order(tab$cv_study), ][1:30, ]
+pandoc.table(tab_sub, caption = "Top 30 proteins with smallest CV.",
+             style = "rmarkdown", split.table = Inf)
+```
+
+Proteins with highest relative CV.
+
+```{r, results = "asis"}
+tab_sub <- tab[order(tab$cv_rel, decreasing = TRUE), ][1:30, ]
+pandoc.table(tab_sub, caption = "Top 30 proteins with largest relative CV.",
+             style = "rmarkdown", split.table = Inf)
+
+```
+
+Proteins with the lowest relative CV.
+
+```{r, results = "asis"}
+tab_sub <- tab[order(tab$cv_rel, decreasing = FALSE), ][1:30, ]
+pandoc.table(tab_sub, caption = "Top 30 proteins with smallest relative CV.",
+             style = "rmarkdown", split.table = Inf)
+
+```
+
+
+
+We next evaluate the variances for tentative biomarker proteins. LLLLL
+
+- are this higher or lower than others?
+- relative CV (CV_study / CV_QC). there is a dependency between both!
+
+
 
 In next figure, scores and loadings from the PCA are presented considering all
 available `r length(proteins)` proteins.
@@ -666,6 +727,9 @@ results <- data.frame(
     EffectSize,
     diff_perc,
     sign_cv)
+results$cv_qc_chris <- 100 * results$cv_qc_chris
+results$cv_study <- cv_study
+results$relative_cv <- cv_rel
 ## Add average concentrations for most important groups.
 results$Avg_Male <- colMeans(
     prot_data[which(prot_data$Sex == "Male"), proteins])
