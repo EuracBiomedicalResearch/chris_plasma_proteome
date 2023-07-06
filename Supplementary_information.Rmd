@@ -53,6 +53,70 @@ cat("\\end{figure}\n")
 
 ```
 
+```{r, results = "asis"}
+library(readxl)
+library(pander)
+results <- as.data.frame(read_xlsx(
+    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
+           "results_sex_age_bmi_hcu_adjusted.xlsx")))
+rownames(results) <- results$Uniprot
+
+tab <- results[,
+               c("Uniprot", "Genes",
+                 "cv_study",
+                 "cv_qc_chris",
+                 "relative_cv"
+                 )]
+colnames(tab) <- c("$UniProt$", "$Gene$", "$CV_{study}$", "$CV_{QC}$",
+                   "$CV_{rel}$")
+rownames(tab) <- NULL
+tab_sub <- tab[order(tab[, 3]), ][1:30, ]
+rownames(tab_sub) <- NULL
+pandoc.table(
+    tab_sub, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with lowest coefficient of variation across study samples. ",
+        "$CV_{study}$: coefficient of variation in study samples, ",
+        "$CV_{QC}$: coefficient of variation in pooled QC samples and ",
+        "$CV_{rel}$: relative coefficient of variation expressed as the ratio ",
+        "between the CV in study and in pooled QC samples."))
+
+```
+
+```{r, results = "asis"}
+tab_sub <- tab[order(tab[, 5], decreasing = TRUE), ][1:30, ]
+rownames(tab_sub) <- NULL
+pandoc.table(
+    tab_sub, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Proteins with the highest (relative) coefficient of variation across ",
+        "study samples. ",
+        "$CV_{study}$: coefficient of variation in study samples, ",
+        "$CV_{QC}$: coefficient of variation in pooled QC samples and ",
+        "$CV_{rel}$: relative coefficient of variation expressed as the ratio ",
+        "between the CV in study and in pooled QC samples."))
+
+```
+
+```{r, results = "asis"}
+## FDA Biomarkers
+fda <- read_xlsx("data/xlsx/FDA_approved_biomarkers.xlsx") |> as.data.frame()
+fda <- fda[!is.na(fda$uniprot_id), ]
+tab <- results[fda$uniprot_id, c("Uniprot", "Genes", "cv_study", "cv_qc_chris")]
+colnames(tab) <- c("$UniProt$", "$Genes$", "$CV_{study}$", "$CV_{QC}")
+rownames(tab) <- NULL
+pandoc.table(
+    tab, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "FDA approved biomarker proteins quantified in the present data set. ",
+        "$CV_{study}$: coefficient of variation in study samples and ",
+        "$CV_{QC}$: coefficient of variation in pooled QC samples."))
+
+```
+
 
 ## Principal Component Analysis and influence of hormonal contraceptive use
 
