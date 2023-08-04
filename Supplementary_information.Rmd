@@ -8,7 +8,7 @@ output:
     toc_depth: 2
 ---
 
-\setcounter{table}{1}
+\setcounter{table}{2}
 
 ```{r style, echo = FALSE, results = 'asis', message=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
@@ -105,13 +105,13 @@ pandoc.table(
 fda <- read_xlsx("data/xlsx/FDA_approved_biomarkers.xlsx") |> as.data.frame()
 fda <- fda[!is.na(fda$uniprot_id), ]
 tab <- results[fda$uniprot_id, c("Uniprot", "Genes", "cv_study", "cv_qc_chris")]
-colnames(tab) <- c("$UniProt$", "$Genes$", "$CV_{study}$", "$CV_{QC}")
+colnames(tab) <- c("$UniProt$", "$Genes$", "$CV_{study}$", "$CV_{QC}$")
 rownames(tab) <- NULL
 pandoc.table(
     tab, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
-        "FDA approved biomarker proteins quantified in the present data set. ",
+        "FDA qualified biomarker proteins quantified in the present data set. ",
         "$CV_{study}$: coefficient of variation in study samples and ",
         "$CV_{QC}$: coefficient of variation in pooled QC samples."))
 
