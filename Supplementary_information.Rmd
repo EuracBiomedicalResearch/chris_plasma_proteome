@@ -111,9 +111,41 @@ pandoc.table(
     tab, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
-        "FDA qualified biomarker proteins quantified in the present data set. ",
+        "Common disease biomarker proteins quantified in the present data set. ",
         "$CV_{study}$: coefficient of variation in study samples and ",
         "$CV_{QC}$: coefficient of variation in pooled QC samples."))
+
+```
+
+```{r, results = "asis"}
+tmp <- data.frame(
+    `Laboratory parameter` = c("Antithrombin (%)", "Albumin (g/dL)",
+                               "HDL (mg/dL)", "LDL (mg/dL)",
+                               "Triglycerides (mg/dL)", "Transferrin (mg/dL)",
+                               "HGN (h/dL)"),
+    `UniProt ID` = c("P01008", "P02768", "P02647", "P04114", "P02656",
+                     "P02787", "P69905"),
+    `HGNC symbol` = c("SERPINC1", "ALB", "APOA1", "APOB", "APOC3",
+                      "TF", "HBA1"),
+    rho = c(0.366, 0.320, 0.408, 0.787, 0.596, 0.686, 0.480))
+pandoc.table(
+    tmp, split.table = "Inf", justity = c("cccc"),
+    caption = paste0("Correlation between clinical laboratory measurements",
+                     " and quantified protein abundances."))
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/Figure_1.png}\n",
+    sep = "")
+cat("  \\caption{Correlation between quantified protein abundances and ",
+    "related diagnostic assays. Shown are MS-determind, relative protein ",
+    "abundances (normalized signal intensities) on the y-axis and ",
+    "related diagnostic assays on the x-axis.}\n",
+    sep = "")
+cat("\\end{figure}\n")
 
 ```
 
@@ -133,18 +165,6 @@ cat("\\end{figure}\n")
 
 ```
 
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=0.5\\textwidth]{",
-    "images/manuscript/supplement/Figure_S150.png}\n", sep = "")
-cat("  \\caption{Abundance of the protein Angiotensinogen (AGT) in study ",
-    "participants using hormonal contraceptives ",
-    "(HCU) and female and male participants that don't.}\n",
-    sep = "")
-cat("\\end{figure}\n")
-
-```
 
 
 # Sex, age and body mass index associated proteins
@@ -322,20 +342,16 @@ pandoc.table(
 ```
 
 
-# Plasma proteins associated with usage of hormonal contraceptives
+## Proteins significantly associated with fasting status
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
-results_hcu <- as.data.frame(read_xlsx(
-    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
-           "results_age_bmi_hcu_adjusted.xlsx")))
-rownames(results_hcu) <- results_hcu$Uniprot
-
-tab <- results_hcu[results_hcu$significant_HCUYes,
+tab <- results[results$significant_FastingNo,
                c("Uniprot", "Genes",
-                 "coef_HCUYes",
-                 "p.adj_HCUYes",
-                 "effect_size_HCUYes")]
-tab <- tab[order(tab$p.adj_HCUYes), ]
+                 "coef_FastingNo",
+                 "p.adj_FastingNo",
+                 "effect_size_FastingNo"
+                 )]
+tab <- tab[order(tab$p.adj_FastingNo), ]
 colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
                    "$ES$")
 rownames(tab) <- NULL
@@ -343,15 +359,20 @@ pandoc.table(
     tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
-        "Proteins with significant difference in abundance between female ",
-        "study participants below 40 years of age that use or don't use ",
-        "hormonal contraceptives.",
-        " $coef$ and $p_{adj}$: coefficient (representing the differential ",
-        "abundance in log2 scale) and p-value ",
-        "adjusted for multiple hypothesis testing. $ES$ effect size. ",
+        "Proteins with significant difference in abundance between ",
+        "participants declared to not have fasted against those who did. ",
+        "$coef$, $ES$ and $p_{adj}$: coefficient (representing the ",
+        "differential abundance in log2 scale) effect size and p-value ",
+        "adjusted for multiple hypothesis testing. ",
         "Proteins are ordered by p-value."))
 
 ```
+
+
+
+
+# Plasma proteins associated with usage of hormonal contraceptives
+
 
 A comparison of the results from the analysis on the full data set and on the
 subset of female participants below 40 years of age is shown below. Coefficients
