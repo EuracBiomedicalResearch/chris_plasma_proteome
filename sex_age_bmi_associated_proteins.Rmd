@@ -292,7 +292,7 @@ ggplotly_or_not(gg_1, PLOTLY)
 ```{r}
 ## FIGURE 1
 ## Transparency for protein names depending on arrow length?
-png("images/manuscript/Figure_2.png", width = 10, height = 10, units = "cm",
+png("images/manuscript/Figure_1.png", width = 10, height = 10, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
 pc <- prcomp(scaledData)
 library(CompMetaboTools)
@@ -458,8 +458,8 @@ dev.off()
 f <- as.character(prot_data$Sex)
 f[prot_data$HCU == "Yes"] <- "HCU"
 f <- factor(f, levels = c("HCU", "Female", "Male"))
-png("images/manuscript/supplement/Figure_S150.png", width = 6.4,
-    height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+png("images/manuscript/Figure_2.png", width = 6.4,
+    height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 library(vioplot)
 par(mfrow = c(1, 1), mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5,
     cex.lab = 1.5, bty = "n", cex.main = 2.5)
@@ -2207,7 +2207,7 @@ for (i in seq_len(nrow(pairs))) {
   impedance laser light scattering based assay).
 
 ```{r}
-png("images/manuscript/Figure_1.png", width = 10, height = 5, units = "cm",
+png("images/manuscript/supplement/Figure_1.png", width = 10, height = 5, units = "cm",
     res = 600, pointsize = 4)
 par(mfrow = c(1, 2), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
 plot(labdata_info[rownames(prot_data), pairs[4, "label"]],
