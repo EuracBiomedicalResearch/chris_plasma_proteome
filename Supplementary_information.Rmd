@@ -1,5 +1,5 @@
 ---
-title: "Supplementary Information for: \\textit{Mass spectrometry-based characterization of the plasma proteome in a large population cohort reveals strong influence from hormonal contraceptive use}"
+title: "Supplementary Information for: \\textit{Hormonal Contraceptives are Shaping the Human Plasma Proteome in a Large Population Cohort}"
 output:
   pdf_document:
     includes:
@@ -654,6 +654,8 @@ for (i in seq_len(nrow(atc4_table))) {
 
 
 # Extended Material and Methods
+
+\setcounter{table}{45}
 
 ```{=latex}
 \begin{table}[h!]
