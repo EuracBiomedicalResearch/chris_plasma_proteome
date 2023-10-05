@@ -1,6 +1,6 @@
 ---
 title: "CHRIS MS-based plasma proteome: general overview and sex, age, BMI and medication associated proteins"
-author: "Nikola Dordevic, Essi Hantikainen, Johannes Rainer"
+author: "Nikola Dordevic, Clemens Dierks, Essi Hantikainen, Johannes Rainer"
 graphics: yes
 output:
   BiocStyle::html_document:
@@ -257,21 +257,11 @@ pandoc.table(tab_sub, caption = "Top 30 proteins with smallest relative CV.",
 
 ```
 
-
-
-We next evaluate the variances for tentative biomarker proteins. LLLLL
-
-- are this higher or lower than others?
-- relative CV (CV_study / CV_QC). there is a dependency between both!
-
-
-
 In next figure, scores and loadings from the PCA are presented considering all
-available `r length(proteins)` proteins.
-Samples are coloured according to their sex. Prior the PCA, data is normalized
-to 0 mean and standard deviation of 1 (autoscaling).
-Plot shows the scores and loadings of all subjects in the space of the first two
-PCs, with 15% of total variances explained.
+available `r length(proteins)` proteins. Samples are coloured according to
+their sex. Prior the PCA, data is normalized to 0 mean and standard deviation of
+1 (autoscaling). Plot shows the scores and loadings of all subjects in the
+space of the first two PCs, with 15% of total variances explained.
 
 ```{r PCA_1_figure, fig.path = IMAGE_PATH, fig.width=12, fig.height=7}
 ## include age in PCA
@@ -396,7 +386,7 @@ definition, because they don't have the same route of administration
 (i.e. orally and metabolized in/through the liver).
 
 ```{r, warning = FALSE}
-## approach 1
+## Prepare medication data
 med <- chrisData("drugs_1")
 med <- med[med$AID %in% rownames(prot_data), ]
 med <- med[!is.na(med$x0dd03), ]
@@ -407,7 +397,7 @@ atc_df <- as.data.frame(atc)
 med$atc_2_name <- atc_df[match(med$atc_2, atc_df$key), "name"]
 med$atc_3_name <- atc_df[match(med$atc_3, atc_df$key), "name"]
 med$atc_4_name <- atc_df[match(med$atc_4, atc_df$key), "name"]
-## Subset to selected sex hormone treatment.
+## Subset to selected sex hormone treatment (WHO definition)
 med_sex_horm <- med[med$atc_3_name %in%
                     c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
                       "ANTIANDROGENS"), ]
@@ -455,25 +445,6 @@ text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
 points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
 grid()
-dev.off()
-## Supplementary Figure P01019
-f <- as.character(prot_data$Sex)
-f[prot_data$HCU == "Yes"] <- "HCU"
-f <- factor(f, levels = c("HCU", "Female", "Male"))
-png("images/manuscript/Figure_2.png", width = 6.4,
-    height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
-library(vioplot)
-par(mfrow = c(1, 1), mar = c(4.3, 4.5, 2, 0.5), cex.axis = 1.5,
-    cex.lab = 1.5, bty = "n", cex.main = 2.5)
-vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
-        main = "P01019 (AGT)")
-grid(nx = NA, ny = NULL)
-
-## ## Distribution for SERPING1 (P05155;P05155-3)
-## vioplot(split(prot_data$`P05155;P05155-3`, f),
-##         ylab = expression(log[2]~abundance),
-##         main = "P05155;P05155-3 (SERPING1)")
-## grid(nx = NA, ny = NULL)
 dev.off()
 
 ```
@@ -589,53 +560,62 @@ dev.off()
 
 ```
 
-Additionally, we evaluated the predictive ability of all plasma proteins 
-for hormonal contraceptive use. To ensure comparability, we matched the users of 
-hormonal contraceptives to a control group of identical size (n = 275). 
-Only non-pregnant women under 40 years not taking hormonal contraceptives 
-were considered for the control group.
+Additionally, we evaluated the predictive ability of all plasma proteins for
+hormonal contraceptive use. To ensure comparability, we match the users of
+hormonal contraceptives to a control group of identical size (n = 275).  Only
+non-pregnant women under 40 years not taking hormonal contraceptives were
+considered for the control group.
 
-```{r, eval = FALSE}
+```{r}
 ## Prepare Data for matching
-# Filter for  HCU users and controls
-filter_hcu <- ((prot_data$Age <= 40) & (prot_data$HCU == "Yes") & (prot_data$Pregnant == "No"))
-filter_control <- ((prot_data$Age <= 40) & (prot_data$HCU == "No") & (prot_data$Pregnant == "No"))
+## Filter for  HCU users and controls
+filter_hcu <- prot_data$Age <= 40 & prot_data$HCU == "Yes" &
+    prot_data$Pregnant == "No"
+filter_control <- prot_data$Age <= 40 & prot_data$HCU == "No" &
+    prot_data$Pregnant == "No"
 
-women_hcu     <- na.omit(prot_data[filter_hcu,])
-women_control <- na.omit(prot_data[filter_control,]) # n = 454 possible control candidates
+women_hcu <- na.omit(prot_data[filter_hcu, ])
+women_control <- na.omit(prot_data[filter_control, ]) # n = 454 possible control candidates
 
-# combine HC users and control group within dataframe
-women_hcu_control <- as.data.frame(rbind(women_hcu, women_control))
+## combine HC users and control group within dataframe
+women_hcu_control <- rbind(women_hcu, women_control)
 
-# drop unnecessary columns
-drop_col <- c("File.Name", "Date", "Inst", "Inj", "Plate", "Sample.Name", "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat", "Season", "Pregnant", "Age_10")
-women_hcu_control <- women_hcu_control[,!(names(women_hcu_control) %in% drop_col)]
+## drop unnecessary columns
+drop_col <- c("File.Name", "Date", "Inst", "Inj", "Plate", "Sample.Name",
+              "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat", "Season",
+              "Pregnant", "Age_10")
+women_hcu_control <- women_hcu_control[, !(colnames(women_hcu_control) %in%
+                                           drop_col)]
 
-# Adjust covariates for matching
+## Adjust covariates for matching
 women_hcu_control$Fasting <- as.factor(women_hcu_control$Fasting)
-women_hcu_control$HCU     <- as.factor(women_hcu_control$HCU)
+women_hcu_control$HCU <- as.factor(women_hcu_control$HCU)
 ```
 
-"Optimal" matching via a generalized linear model (GLM) was used for propensity 
-score calculation (including age, BMI and fasting status as covariates) 
+"Optimal" matching via a generalized linear model (GLM) was used for propensity
+score calculation (including age, BMI and fasting status as covariates)
 as implemented in the R package (MatchIt).
 
-```{r, eval = FALSE}
-# Matching
-match.out <- matchit(HCU ~ Age + Fasting + BMI, data=women_hcu_control[,c("HCU", "Fasting", "BMI", "Age")], method="optimal", distance="glm")
+```{r}
+## Matching
+match.out <- matchit(
+    HCU ~ Age + Fasting + BMI,
+    data = women_hcu_control[,c("HCU", "Fasting", "BMI", "Age")],
+    method = "optimal", distance = "glm")
 
-# Select matched participants
-hcu_control_matched <- rbind(women_control[match.out$match.matrix, ], women_hcu)
+## Select matched participants
+hcu_control_matched <- rbind(women_control[match.out$match.matrix, ],
+                             women_hcu)
 
 summary(match.out)
 ```
 
-We further visualize propensity scores and covariate distributions to assess matching quality. 
-Controls (HCU = No) are shown in gray - Treatment group (HCU = Yes) in black!
-Propensity score evaluation and inspection of covariate distribution, show sufficient matching 
-for the subsequent analysis.
+We further visualize propensity scores and covariate distributions to assess
+matching quality. Controls (HCU = No) are shown in gray - Treatment group (HCU =
+Yes) in black. Propensity score evaluation and inspection of covariate
+distribution, show sufficient matching for the subsequent analysis.
 
-```{r, eval = FALSE}
+```{r}
 plot(match.out, type = "jitter", interactive = FALSE)
 
 plot(match.out, type = "density", interactive = FALSE,
@@ -644,11 +624,12 @@ plot(match.out, type = "density", interactive = FALSE,
 plot(summary(match.out))
 ```
 
-Predictive performance of proteins for HCU is evaluated by calculating Area Under the Receiver Operating Characteristic curve (AUROC).
+Predictive performance of proteins for HCU is evaluated by calculating Area
+Under the Receiver Operating Characteristic curve (AUROC).
 
-```{r, eval = FALSE}
-# Select only plasma protein and HCU status
-hcu_control_matched <- hcu_control_matched[,c(head(prot_ann$description,148), "HCU")]
+```{r}
+## Select only plasma protein and HCU status
+hcu_control_matched <- hcu_control_matched[, c(proteins, "HCU")]
 labels <- hcu_control_matched$HCU
 
 ## calculate ROC
@@ -666,47 +647,55 @@ roc_list <- lapply(colnames(hcu_control_matched), calculate_roc)
 roc_df <- do.call(rbind, lapply(roc_list, as.data.frame))
 
 ## add Genes and UniProtIDs to dataframe
-roc_df$Genes <- head(prot_ann$Genes,148)
-roc_df$UniProtId <- head(prot_ann$description,148)
+roc_df$Genes <- prot_ann[proteins, "Genes"]
+roc_df$UniProtId <- prot_ann[proteins, "description"]
 
-## Save the ROC data to a CSV file 
+## Save the ROC data to a CSV file
 #write.csv(roc_df, "rocValsHCU.csv", row.names = FALSE)
 ```
 
-Angiotensinogen (AGT) shows high predictive power for hormonal contraceptive usage (AUROC = 0.89)
+Angiotensinogen (AGT) shows high predictive power for hormonal contraceptive
+usage (AUROC = 0.89)
 
-```{r, eval = FALSE}
+```{r,}
 # Calculate ROC seperately for AGT
-roc_data_agt <- roc(hcu_control_matched$HCU, hcu_control_matched$P0101
+roc_data_agt <- roc(hcu_control_matched$HCU, hcu_control_matched$P01019)
 
 roc_df <- data.frame(
   OneMinusSpecificity = 1 - roc_data_agt$specificities,
   Sensitivity = roc_data_agt$sensitivities
 )
 
-# Create ROC Curvee
-roc_plot <- ggplot(roc_df, aes(x = OneMinusSpecificity, y = Sensitivity)) +
-  geom_line(color = "black", size = 1) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray") +
-  geom_text(aes(x = 0.2, y = 0.1, label = paste("AUC AGT =", round(roc_data_agt$auc,2))), 
-            size = 4, color = "black", hjust = -2.0, vjust = 1.5) +
-  labs(
-    x = "1 - Specificity",
-    y = "Sensitivity",
-  ) +
-  theme_bw() +
-  theme(
-    axis.title.x = element_text(size = 14),
-    axis.title.y = element_text(size = 14),
-    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(fill = "white")
-  )
-ggsave("images/manuscript/Figure_2B.png", plot = roc_plot, width = 6, height = 4, dpi = 600)
-
-#print(roc_plot)
-#dev.off()
 ```
+
+```{r}
+## Figure 2.
+png("images/manuscript/Figure_2.png", width = 10,
+    height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 2), mar = c(4, 4.5, 5, 1), cex.axis = 1.5, cex.lab = 1.5,
+    bty = "n", cex.main = 2.5)
+## Supplementary Figure P01019 AGT concentration in different groups
+f <- as.character(prot_data$Sex)
+f[prot_data$HCU == "Yes"] <- "HCU"
+f <- factor(f, levels = c("HCU", "Female", "Male"))
+library(vioplot)
+vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
+        main = "")
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
+      cex = par("cex.main"))
+mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
+## ROC
+plot(roc_df$OneMinusSpecificity, roc_df$Sensitivity, xlab = "1 - Specificity",
+     ylab = "Sensitivity", type = "l", lwd = 2)
+abline(0, 1, lty = 3, col = "grey")
+grid()
+legend("bottomright", legend = "AUC AGT = 0.89", cex = 2, bty = "n")
+mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
+dev.off()
+
+```
+
 
 # Sex, Age, BMI and oral hormonal contraceptive-associated proteins
 
