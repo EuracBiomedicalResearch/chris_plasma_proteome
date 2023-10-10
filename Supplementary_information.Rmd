@@ -22,6 +22,13 @@ Distribution of $log_{2}$ transformed signal distributions in the analyzed
 samples is shown for each protein.
 
 ```{r, results = "asis"}
+library(readxl)
+library(pander)
+results <- as.data.frame(read_xlsx(
+    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
+           "results_sex_age_bmi_hcu_adjusted.xlsx")))
+rownames(results) <- results$Uniprot
+
 fls <- dir("images/manuscript/supplement", pattern = "^density",
            full.names = TRUE)
 
@@ -32,7 +39,8 @@ for (i in seq_along(fls)) {
     cat("\\centering\n")
     cat("  \\includegraphics[width=0.7\\textwidth]{",
         fls[i], "}\n", sep = "")
-    cat("  \\caption{Signal distribution for ", prot_id, ".}\n", sep = "")
+    cat("  \\caption{Signal distribution for ", prot_id,
+        " (", results[prot_id, "Genes"],").}\n", sep = "")
     cat("\\end{figure}\n")
     ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
     }
@@ -60,13 +68,6 @@ analyses.
 detected proteins.
 
 ```{r, results = "asis"}
-library(readxl)
-library(pander)
-results <- as.data.frame(read_xlsx(
-    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
-           "results_sex_age_bmi_hcu_adjusted.xlsx")))
-rownames(results) <- results$Uniprot
-
 tab <- results[,
                c("Uniprot", "Genes",
                  "cv_study",
