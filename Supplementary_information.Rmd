@@ -53,6 +53,12 @@ cat("\\end{figure}\n")
 
 ```
 
+**Table S1** (external spreadsheet, xlsx format): Results from association
+analyses.
+
+**Table S2** (external spreadsheet, xlsx format): Functional annotations for
+detected proteins.
+
 ```{r, results = "asis"}
 library(readxl)
 library(pander)
@@ -650,7 +656,7 @@ for (i in seq_len(nrow(atc4_table))) {
 }
 ```
 
-
+**Table S45** (external spreadsheet, xlsx format): Comparison with results from literature.
 
 
 # Extended Material and Methods
