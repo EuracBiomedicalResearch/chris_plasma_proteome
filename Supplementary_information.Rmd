@@ -173,6 +173,27 @@ cat("\\end{figure}\n")
 ```
 
 
+# Previous hormonal contraceptive use
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=1.1\\textwidth]{",
+    "images/manuscript/supplement/Figure_previous_hcu.png}\n",
+    sep = "")
+cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
+    "plasma proteome. Left: results from the comparison between participants ",
+    "currently taking hormonal contraceptives and those that never took ",
+    "hormonal contraceptives. Middle: results from the comparison between ",
+    "participants that used hormonal contraceptives in the past and those ",
+    "that never took them. Proteins with significant differences in ",
+    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
+    "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
 
 # Sex, age and body mass index associated proteins
 

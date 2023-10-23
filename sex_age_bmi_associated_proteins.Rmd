@@ -669,6 +669,30 @@ roc_df <- data.frame(
 ```
 
 ```{r}
+par(mfrow = c(1, 2), mar = c(4, 4.5, 5, 1), cex.axis = 1.5, cex.lab = 1.5,
+    bty = "n", cex.main = 2.5)
+## Supplementary Figure P01019 AGT concentration in different groups
+f <- as.character(prot_data$Sex)
+f[prot_data$HCU == "Yes"] <- "HCU"
+f <- factor(f, levels = c("HCU", "Female", "Male"))
+library(vioplot)
+vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
+        main = "")
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
+      cex = par("cex.main"))
+mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
+## ROC
+plot(roc_df$OneMinusSpecificity, roc_df$Sensitivity, xlab = "1 - Specificity",
+     ylab = "Sensitivity", type = "l", lwd = 2)
+abline(0, 1, lty = 3, col = "grey")
+grid()
+legend("bottomright", legend = "AUC AGT = 0.89", cex = 2, bty = "n")
+mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
+
+```
+
+```{r}
 ## Figure 2.
 png("images/manuscript/Figure_2.png", width = 10,
     height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
@@ -2431,6 +2455,38 @@ plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
 grid()
 
 ```
+
+```{r}
+#' Supplementary Figure for previous HCU.
+png("images/manuscript/supplement/Figure_previous_hcu.png", width = 15,
+    height = 5, units = "cm", res = 600, pointsize = 4)
+
+par(mfrow = c(1, 3), mar = c(5, 5, 2, 0.5), cex.lab = 2, bty = "n",
+    cex.main = 3, cex.axis = 2.5)
+y <- -log10(results_women_40$p.adj_HCU_historycurrent)
+x <- results_women_40$coef_HCU_historycurrent
+xl <- range(x)
+yl <- range(y)
+plot(x, y, main = "HCU: current vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+sigs <- results_women_40$significant_HCU_historycurrent
+points(x[sigs], y[sigs], pch = 21, col = "#E41A1CCE", bg = "#E41A1C40")
+grid()
+#' Can re-use the x and y limits because there is in fact no difference here.
+y <- -log10(results_women_40$p.adj_HCU_historypast)
+x <- results_women_40$coef_HCU_historypast
+plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+         col = "#000000ce", bg = "#00000060")
+grid()
+vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
+        main = "AGT", ylab = expression(log[2]~abundance))
+grid()
+dev.off()
+
+```
+
 
 No difference in protein concentrations between participants that used
 contraceptives in past and those that never used them can be seen. In contrast,
