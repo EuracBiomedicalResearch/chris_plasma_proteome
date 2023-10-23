@@ -669,6 +669,30 @@ roc_df <- data.frame(
 ```
 
 ```{r}
+par(mfrow = c(1, 2), mar = c(4, 4.5, 5, 1), cex.axis = 1.5, cex.lab = 1.5,
+    bty = "n", cex.main = 2.5)
+## Supplementary Figure P01019 AGT concentration in different groups
+f <- as.character(prot_data$Sex)
+f[prot_data$HCU == "Yes"] <- "HCU"
+f <- factor(f, levels = c("HCU", "Female", "Male"))
+library(vioplot)
+vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
+        main = "")
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
+      cex = par("cex.main"))
+mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
+## ROC
+plot(roc_df$OneMinusSpecificity, roc_df$Sensitivity, xlab = "1 - Specificity",
+     ylab = "Sensitivity", type = "l", lwd = 2)
+abline(0, 1, lty = 3, col = "grey")
+grid()
+legend("bottomright", legend = "AUC AGT = 0.89", cex = 2, bty = "n")
+mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
+
+```
+
+```{r}
 ## Figure 2.
 png("images/manuscript/Figure_2.png", width = 10,
     height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
@@ -695,6 +719,7 @@ mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
 dev.off()
 
 ```
+
 
 
 # Sex, Age, BMI and oral hormonal contraceptive-associated proteins
@@ -2246,6 +2271,363 @@ ggsave("images/manuscript/supplement/Figure_ATC4.png", plot = plt, dpi = 600,
        width = 12, height = 9, units = "cm", scale = 2.5)
 plt
 ```
+
+
+# Associations with previous use of hormonal contraceptives
+
+We also evaluate previous usage of hormonal contraceptives. All women that state
+to have taken hormonal contraceptives before and that are not taking hormonal
+contraceptives at present are identified. We in addition define a new variable
+*HCU_history* that categorizes women into those that take contraceptives at
+present, those that did take contraceptives before and those that never took
+contraceptives.
+
+```{r}
+#' Get info on previous contraceptive usage from the interview data.
+#' - x0wo03: do you currently take contraceptive pills?
+#' - x0wo02: have you ever taken contraceptive pills?
+#' - x0wo04b: how many years have you taken contraceptive pills?
+wo <- interview_info[rownames(prot_data), c("x0wo03", "x0wo02", "x0wo04b")]
+
+#' Previous hormonal contraceptive use pHCU:
+#' - currently not taking contraceptives (x0wo03 == "No" & HCU == "No")
+#' - previous HCU x0wo02 == "Yes"
+prot_data$pHCU <- "No"
+prot_data$pHCU[which(prot_data$HCU == "No" &
+                     wo$x0wo03 == "No" &
+                     wo$x0wo02 == "Yes")] <- "Yes"
+prot_data$HCU_duration <- wo$x0wo04b
+
+#' Defining also a variable that categorizes participants in:
+#' - current HCU
+#' - past HCU
+#' - never HCU
+prot_data$HCU_history <- "never"
+prot_data$HCU_history[prot_data$HCU == "Yes"] <- "current"
+prot_data$HCU_history[prot_data$pHCU == "Yes"] <- "past"
+prot_data$HCU_history <- factor(prot_data$HCU_history,
+                                levels = c("never", "current", "past"))
+```
+
+We next subset the data to female participants only excluding also participants
+(about 160) for which the information on contraceptive use is ambiguous or
+partially missing.
+
+```{r, fig.cap = "Age distribution for women in the various HCU categories."}
+women_data <- prot_data[prot_data$Sex == "Female", ]
+
+#' Remove women that state to take hormonal contraceptives at present. These
+#' are not included in the HCU definition.
+aid_rem <- rownames(wo[which(prot_data$HCU == "No" &
+                             wo$x0wo03 == "Yes"), ])
+#' These are strange ones - answers to x0wo02 are either NA or Yes.
+women_data <- women_data[!rownames(women_data) %in% aid_rem, ]
+
+table(women_data$HCU_history)
+
+vioplot(split(women_data$Age, women_data$HCU_history),
+        main = "HCU", ylab = "age")
+grid()
+```
+
+As expected, a clear difference in age distribution can be seen between the
+categories. To reduce the influence of age we restrict the analysis to a smaller
+age range.
+
+```{r, fig.cap = "Age distribution for women below 40 in the various HCU categories."}
+women_data_40 <- women_data[women_data$Age < 40, ]
+
+table(women_data_40$HCU_history)
+vioplot(split(women_data_40$Age, women_data_40$HCU_history),
+        main = "HCU, age < 40", ylab = "age")
+grid()
+
+```
+
+We next evaluate the concentration of AGT in the different groups.
+
+```{r, fig.cap = "Abundance of AGT in women (below age of 40) in the various HCU categories."}
+vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
+        main = "AGT, HCU, age < 40", ylab = expression(log[2]~abundance))
+grid()
+```
+
+AGT concentrations are thus only higher in participants **currently** taking
+hormonal contraceptives, but do not differ between participants that never took
+contraceptives or that did previously take contraceptives. This analysis did
+however not take the last time hormonal contraceptives were taken into account.
+
+We next evaluate differences in protein concentrations between participants
+currently taking hormonal contraceptives and those that never used them as well
+as between participants previously taking hormonal contraceptives and those that
+never used them. This analysis is performed on female participants of age below
+40 for which clear information on current or past hormonal contraceptive use is
+available.
+
+```{r}
+#' Linear model LM1
+FunForLinRegW <- function(AnalyteName, Data) {
+    Analyte <- Data[, AnalyteName]
+    LMReg <- lm(Analyte ~ Age_10 + Fasting + BMIcat + HCU_history,
+                data = Data)
+    res <- coef(summary(LMReg))[-1, ]
+    p.Values <- data.frame(c(res[, 1],
+                             res[, 4]))
+    names(p.Values) <- AnalyteName
+    rownames(p.Values) <- c(paste0("coef_", rownames(res)),
+                            paste0("p-value_", rownames(res)))
+    return(p.Values)
+}
+## do it in one run
+LMRegtestsW <- do.call(
+    cbind, lapply(proteins, function(x) FunForLinRegW(x, women_data_40)))
+Test_output <- t(LMRegtestsW)
+## Adjusting for multiple hypothesis testing
+adjp <- apply(Test_output[, grep("p-value", colnames(Test_output))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+Test_output <- cbind(Test_output, adjp)
+
+#' Define statistically signicant results
+comps <- colnames(Test_output)[grep("coef", colnames(Test_output))]
+sign_p <- Test_output[, grep("p-adj", colnames(Test_output))] < 0.05
+colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
+
+#' perform data normalization (autoscaling)
+prot_data_AS <- women_data_40
+prot_data_AS[, proteins] <- scale(prot_data_AS[, proteins], scale = TRUE)
+LMRegtests_AS <- do.call(cbind.data.frame,
+                         lapply(proteins,
+                                function(x) FunForLinRegW(x, prot_data_AS)))
+Test_output_AS <- t(LMRegtests_AS)
+EffectSize <- Test_output_AS[, grep("coef", colnames(Test_output_AS))]
+colnames(EffectSize) <- sub("coef", "effect_size", colnames(EffectSize))
+
+#' Calculate the (absolute) difference in abundance expressed as a percentage
+#' based on a (log2) coefficient.
+comps <- colnames(Test_output)[grep("coef", colnames(Test_output))]
+diff_perc <- apply(Test_output[, comps],
+                   MARGIN = 2, diff_percentage)
+colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
+#' define which metabolites are considered significant: require p-value < 0.05
+#' and difference in concentration > CV_QC (expressed in %)
+sign_cv <- lapply(comps, function(z) {
+    z <- sub("coef_", "", z)
+    sign_p[, paste0("significant_", z)] &
+        diff_perc[, paste0("diff_perc_", z)] > 100 *
+        prot_ann[proteins, "cv_qc_chris"]
+})
+sign_cv <- do.call(cbind, sign_cv)
+colnames(sign_cv) <- sub("coef", "significant", comps)
+#' Add the significant for numeric variable
+sign_cv[, "significant_Age_10"] <- sign_p[, "significant_Age_10"]
+
+results_women_40 <- data.frame(
+    prot_ann[proteins, c("description", "long_description", "PeptideNN",
+                         "PeptideNames", "Protein.Ids", "Protein.Names",
+                         "Genes", "Modified.Sequence", "Stripped.Sequence",
+                         "Precursor.Id", "cv_qc_chris")],
+    Test_output,
+    EffectSize,
+    diff_perc,
+    sign_cv)
+
+```
+
+The volcano plots below show the results from this comparisons.
+
+```{r, fig.width = 14, fig.cap = "Volcano plots showing the results for the comparison of women (aged < 40) currently (left), or previously (right) taking hormonal contraceptives against those that never used hormonal contraceptives."}
+par(mfrow = c(1, 2))
+y <- -log10(results_women_40$p.adj_HCU_historycurrent)
+x <- results_women_40$coef_HCU_historycurrent
+xl <- range(x)
+yl <- range(y)
+plot(x, y, main = "HCU: current vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+         col = "#000000ce", bg = "#00000060")
+grid()
+#' Can re-use the x and y limits because there is in fact no difference here.
+y <- -log10(results_women_40$p.adj_HCU_historypast)
+x <- results_women_40$coef_HCU_historypast
+plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+         col = "#000000ce", bg = "#00000060")
+grid()
+
+```
+
+```{r}
+#' Supplementary Figure for previous HCU.
+png("images/manuscript/supplement/Figure_previous_hcu.png", width = 15,
+    height = 5, units = "cm", res = 600, pointsize = 4)
+
+par(mfrow = c(1, 3), mar = c(5, 5, 2, 0.5), cex.lab = 2, bty = "n",
+    cex.main = 3, cex.axis = 2.5)
+y <- -log10(results_women_40$p.adj_HCU_historycurrent)
+x <- results_women_40$coef_HCU_historycurrent
+xl <- range(x)
+yl <- range(y)
+plot(x, y, main = "HCU: current vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+sigs <- results_women_40$significant_HCU_historycurrent
+points(x[sigs], y[sigs], pch = 21, col = "#E41A1CCE", bg = "#E41A1C40")
+grid()
+#' Can re-use the x and y limits because there is in fact no difference here.
+y <- -log10(results_women_40$p.adj_HCU_historypast)
+x <- results_women_40$coef_HCU_historypast
+plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+         col = "#000000ce", bg = "#00000060")
+grid()
+vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
+        main = "AGT", ylab = expression(log[2]~abundance))
+grid()
+dev.off()
+
+```
+
+
+No difference in protein concentrations between participants that used
+contraceptives in past and those that never used them can be seen. In contrast,
+a large number of proteins are strongly affected by current use of hormonal
+contraceptives. The full table with the results is shown below.
+
+```{r}
+tmp <- results_women_40[,
+                        c("Protein.Names", "Genes",
+                          "coef_HCU_historycurrent",
+                          "p.adj_HCU_historycurrent",
+                          "effect_size_HCU_historycurrent",
+                          "significant_HCU_historycurrent",
+                          "coef_HCU_historypast",
+                          "p.adj_HCU_historypast",
+                          "effect_size_HCU_historypast",
+                          "significant_HCU_historypast")]
+datatable(tmp) |>
+    formatRound(columns = which(vapply(tmp, is.numeric, logical(1))),
+                digits = 3)
+```
+
+We next compare the significant proteins from the full analysis on HCU with
+those defined in the analysis directly comparing current HCU against never HCU.
+
+```{r, fig.cap = "Comparisons of coefficients for associations with HCU."}
+results_hcu <- results_hcu[rownames(results_women_40), ]
+
+plot(results_hcu$coef_HCUYes, results_women_40$coef_HCU_historycurrent,
+     pch = 21, col = "#000000ce", bg = "#00000060", xlab = "coef HCU",
+     ylab = "coef HCU current vs never")
+grid()
+abline(0, 1)
+
+sum(results_hcu$significant_HCUYes)
+sum(results_hcu$significant_HCUYes & results_women_40$significant_HCU_historycurrent)
+```
+
+The HCU association results on the full data set are highly comparable to the
+results from the comparison between female participants currently taking
+hormonal contraceptives and those that never took them. The coefficients are
+slightly larger in the latter case, mostly because of the *cleaner* data
+set/comparison.
+
+For completeness we also create a heatmap of concentrations for
+
+```{r, fig.cap = "Heatmap of HCU associated proteins in women (below 40)."}
+tmp <- prot_data[, rownames(results_women_40)[results_women_40$significant_HCU_historycurrent]]
+tmp <- t(tmp)
+tmp <- tmp - rowMeans(tmp)
+tmp <- tmp[, rownames(women_data_40)]
+
+ann <- data.frame(HCU = women_data_40$HCU_history)
+rownames(ann) <- rownames(women_data_40)
+pheatmap(tmp, annotation_col = ann)
+
+```
+
+Participants get grouped into two main clusters: those currently taking hormonal
+contraceptives and all other participants.
+
+Estimate when the women from the past HCU approximately stopped taking hormonal
+contraceptives. This is done based on the estimated age women first start taking
+contraceptives, the age at participation and the self-reported duration HCUs are
+taken.
+
+```{r}
+#' Defining the average age (estimated) when women start taking hormonal
+#' contraceptives.
+avg_age <- 16
+
+#' Estimate the HCU free period.
+women_data_40$eHCU_free_period <- women_data_40$Age -
+    women_data_40$HCU_duration - avg_age
+
+```
+
+The distribution of this *HCU free period* for women that took HCU in the past
+is shown below. Note that we remove negative values.
+
+```{r, fig.cap = "Distribution of estimated HCU free period for women (below 40) with past HCU."}
+women_data_40_past <- women_data_40[women_data_40$HCU_history == "past", ]
+
+#' Remove negative values
+sum(women_data_40_past$eHCU_free_period < 0, na.rm = TRUE)
+women_data_40_past$eHCU_free_period[which(women_data_40_past$eHCU_free_period < 0)] <- NA
+
+plot(density(women_data_40_past$eHCU_free_period, na.rm = TRUE),
+     xlab = "estimated time period without HCU",
+     main = "Women below 40 with previous HCU")
+```
+
+For these we next evaluate whether there is a dependency between the estimated
+HCU free time period and concentrations for selected proteins.
+
+```{r, fig.cap = "Relationship between AGT plasma concentrations and HCU free time for women below 40 with past HCU."}
+
+x <- women_data_40_past$eHCU_free_period
+y <- women_data_40_past$P01019
+plot(x, y, pch = 21, col = "#000000ce",
+     bg = "#00000060", xlab = "estimated HCU free period",
+     ylab = expression(log[2]~abundance), main = "AGT (P01019)")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+At last also fitting linear models to each proteins.
+
+```{r}
+#' Linear model LM1
+lm_hcu_period <- function(AnalyteName, Data) {
+    Analyte <- Data[, AnalyteName]
+    LMReg <- lm(Analyte ~ Age_10 + Fasting + BMIcat + eHCU_free_period,
+                data = Data)
+    res <- coef(summary(LMReg))[-1, ]
+    p.Values <- data.frame(c(res[, 1],
+                             res[, 4]))
+    names(p.Values) <- AnalyteName
+    rownames(p.Values) <- c(paste0("coef_", rownames(res)),
+                            paste0("p-value_", rownames(res)))
+    return(p.Values)
+}
+## do it in one run
+Test_output <- do.call(
+    cbind, lapply(proteins, function(x) lm_hcu_period(x, women_data_40_past))) |>
+    t()
+## Adjusting for multiple hypothesis testing
+adjp <- apply(Test_output[, grep("p-value", colnames(Test_output))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+Test_output <- cbind(Test_output, adjp)
+
+min(Test_output[, "p-adj_eHCU_free_period"])
+## Test_output[order(Test_output[, "p-value_eHCU_free_period"]), ]
+```
+
+No significant association could be found.
+
+
 
 # Correlation between clinical/lab parameters and plasma proteomics data
 
