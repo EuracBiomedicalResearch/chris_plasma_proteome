@@ -1,5 +1,5 @@
 ---
-title: "Supplementary Information for: \\textit{Hormonal Contraceptives are Shaping the Human Plasma Proteome in a Large Population Cohort}"
+title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Plasma Proteome in a Broad Population Study}"
 output:
   pdf_document:
     includes:
