@@ -930,12 +930,13 @@ dr <- "images/manuscript/"
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
 png(paste0(dr, "_Figure_3ab.png"), width = 8.6, height = 4.1, units = "cm",
     res = 600, pointsize = 3.5)
-par(mar = c(3.5, 4.5, 1.5, 1.5), mfrow = c(1, 2), cex.axis = 1.2)
-plot_volcano(results, "SexFemale", main = "Female vs Male")
+par(mar = c(4, 4.7, 1, 1.5), mfrow = c(1, 2), cex.axis = 2,
+    cex.lab = 2, cex.main = 2.5)
+plot_volcano(results, "SexFemale", main = "", bty = "n")
 grid()
 ## abline(h = -log10(0.05), lty = 2)
 significant_points(results, sign_es, comparison = "SexFemale", cex = 1.1)
-plot_volcano(results, "Age_10", main = "Age")
+plot_volcano(results, "Age_10", main = "", bty = "n")
 grid()
 ## abline(h = -log10(0.05), lty = 2)
 significant_points(results, sign_es, comparison = "Age_10", cex = 1.1)
@@ -1529,8 +1530,8 @@ results for BMI.
 ## Figure 4 paper.
 png("images/manuscript/Figure_4.png", width = 12, height = 4, units = "cm",
     res = 600, pointsize = 4)
-par(mfrow = c(1, 3), mar = c(4.5, 4.3, 1.5, 0.5), cex.lab = 1.5, bty = "n",
-    cex.main = 2.5)
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 1.5, 0.5), cex.lab = 2, bty = "n",
+    cex.main = 2.5, cex.axis = 2)
 ## Sex
 x <- Test_output[, "coef_SexFemale"]
 y <- Test_output_sens[, "coef_SexFemale"]
@@ -2052,16 +2053,17 @@ ggplot(aes(Var2, Var1, fill = value, label = value)) +
     theme_classic() +
     scale_x_discrete(expand=c(0,0), limits = colnames(FM)[clust2$order]) +
     scale_y_discrete(expand=c(0,0), limits = rownames(FM)[clust1$order]) +
-    theme(axis.text.x = element_text(angle = 20, hjust = 1, size = 7),
-          axis.text.y = element_text(hjust = 1, size = 7),
-          plot.margin = margin(t = 5, l = 30))
+    theme(axis.text.x = element_text(angle = 20, hjust = 1, size = 10),
+          axis.text.y = element_text(hjust = 1, size = 10),
+          plot.margin = margin(t = 5, l = 45, r = 5, b = 5),
+          legend.position = "none")
     ## theme(text = element_text(family = "Roboto"),
     ##       axis.text.x = element_text(angle = 33, hjust = 1, size = 7),
     ##       axis.text.y = element_text(hjust = 1, size = 7),
     ##       plot.margin = margin(t = 5, l = 40))
 
 ggsave("images/manuscript/Figure_ATC3.png", plot = plt, dpi = 600, width = 12,
-       height = 8, units = "cm", scale = 2.5)
+       height = 12, units = "cm", scale = 2.5)
 plt
 ```
 
