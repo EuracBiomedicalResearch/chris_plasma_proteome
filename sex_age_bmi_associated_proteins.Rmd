@@ -129,7 +129,6 @@ participants and add the age and sex information for each study participant.
 ## add here phenotype data from chrisData and recalculate season from exam day
 gen_info <- chrisData("general_information", release = "baseline")
 rownames(gen_info) <- gen_info$AID
-prot_data$Season <- as.factor(season(gen_info[rownames(prot_data), "x0_examd"]))
 prot_data$Sex <- gen_info[rownames(prot_data), "x0_sex"]
 prot_data$Age <- gen_info[rownames(prot_data), "x0_age"]
 ```
@@ -179,7 +178,7 @@ general overview of the trait is summarized below:
 
 ```{r, message=FALSE}
 Overview <- summary(
-    prot_data[, c("Sex", "Fasting", "Age", "Age_10", "Season", "BMIcat",
+    prot_data[, c("Sex", "Fasting", "Age", "Age_10", "BMIcat",
                   "Pregnant", "Fasting")])
 print(Overview)
 ```
@@ -199,10 +198,9 @@ prot_data <- prot_data[-rem, ]
 Summary for the final data set.
 
 ```{r}
-prot_data[, c("Sex", "Fasting", "Age", "Age_10", "Season", "BMIcat",
+prot_data[, c("Sex", "Fasting", "Age", "Age_10", "BMIcat",
               "Pregnant", "Fasting")] %>% summary()
 ```
-
 
 This reduces the data set to `r nrow(prot_data)` individuals.
 
@@ -339,7 +337,6 @@ grid()
 dev.off()
 ```
 
-
 There is an interesting separation on PC1 with a subgroup of mostly female
 participants which seems also to be related to Age (not shown).
 
@@ -393,10 +390,13 @@ med <- med[!is.na(med$x0dd03), ]
 med$atc_2 <- toAtcLevel(med$x0dd03, level = 2)
 med$atc_3 <- toAtcLevel(med$x0dd03, level = 3)
 med$atc_4 <- toAtcLevel(med$x0dd03, level = 4)
+med$atc_5 <- toAtcLevel(med$x0dd03, level = 5)
+
 atc_df <- as.data.frame(atc)
 med$atc_2_name <- atc_df[match(med$atc_2, atc_df$key), "name"]
 med$atc_3_name <- atc_df[match(med$atc_3, atc_df$key), "name"]
 med$atc_4_name <- atc_df[match(med$atc_4, atc_df$key), "name"]
+med$atc_5_name <- atc_df[match(med$atc_5, atc_df$key), "name"]
 ## Subset to selected sex hormone treatment (WHO definition)
 med_sex_horm <- med[med$atc_3_name %in%
                     c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
@@ -407,7 +407,6 @@ prot_data$HCU <- factor(prot_data$HCU,
                         levels = c("No", "Yes"))
 summary(prot_data$HCU)
 ```
-
 
 ```{r PCA_HCU, warning = FALSE, fig.width = 12, fig.height = 7}
 gg_2 <- autoplot(prcomp(scaledData), x = 1, y = 2,
@@ -482,9 +481,36 @@ ggplotly_or_not(age_2, PLOTLY)
 ```
 
 Clearly there is an enrichment of young women among participants using hormonal
+contraceptives. We next evaluate which preparations are taken as hormonal
 contraceptives.
 
-```{r, eval = FALSE}
+```{r}
+contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+                                   "CONTRACEPTIVES FOR TOPICAL USE",
+                                   "ANTIANDROGENS"), ]
+tmp <- split(contr, f = contr$atc_5)
+contr_atc5 <- lapply(tmp, function(z) {
+    a <- unique(z[, c("atc_3", "atc_4", "atc_5", "atc_4_name", "atc_5_name")])
+    a$count <- nrow(z)
+    a$preparation <- paste0(unique(z$x0dd07), collapse = ";")
+    a
+})
+contr_atc5 <- do.call(rbind, contr_atc5)
+
+write_xlsx(contr_atc5, path = "contraceptives.xlsx")
+
+pandoc.table(
+    contr_atc5[, c("atc_4_name", "atc_5_name", "count")], style = "rmarkdown",
+    caption = "Types of hormonal contraceptives taken by participants.")
+```
+
+Among them, G03AB08 (dienogest and estradiol) use bioidentical hormone
+(estradiol valerate) and G03AC09 (desogestrel) progesteron only were described
+to have more neutral effects than other combined preparations that include
+ethinylestradiol [Kangasniemi et al. Human Reprod. 2023].
+
+
+```{r, eval = TRUE}
 contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
                                    "CONTRACEPTIVES FOR TOPICAL USE",
                                    "ANTIANDROGENS"), ]
@@ -582,7 +608,7 @@ women_hcu_control <- rbind(women_hcu, women_control)
 
 ## drop unnecessary columns
 drop_col <- c("File.Name", "Date", "Inst", "Inj", "Plate", "Sample.Name",
-              "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat", "Season",
+              "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat",
               "Pregnant", "Age_10")
 women_hcu_control <- women_hcu_control[, !(colnames(women_hcu_control) %in%
                                            drop_col)]
@@ -1838,6 +1864,719 @@ pandoc.table(
     tab, style = "rmarkdown",
     caption = "Distribution of absolute effect sizes for significant proteins"
 )
+```
+
+
+## Evaluating effect of different hormone preparations
+
+Ethinylestradiol (EE), used in most horomonal contraceptive preparations have
+been shown to have a broader effect than the bioidentical horomones or
+progesteron only preparations [@kangasniemi_ethinylestradiol_2023]. We thus here
+evaluate whether we see differences in the abundances of participants by
+hormonal preparations.
+
+For the analysis, we first restrict to oral contraceptives and categorize them
+into preparations that contain ethinylestradiol (EE), preparations with
+bioidentical hormones (BI) and progestogen preparations (P4). In the present
+data set, two preparations contain bioidentical hormones: ZOELY (estradiol (E2))
+and KLAIRA (estradiol valerate (EV)).
+
+```{r, results = "asis"}
+#' Define the table with contraceptives.
+oral_hcu <- data.frame(
+    ATC5 = c("G03AA07",
+             "G03AA09",
+             "G03AA10",
+             "G03AA12",
+             "G03AA15",
+             "G03AA16",
+             "G03AB05",
+             "G03AB06",
+             "G03HB01",
+             "G03AC09",
+             "G03AA14",
+             "G03AB08"),
+    ATC5_name = c("levonorgestrel and ethinylestradiol",
+                  "desogestrel and ethinylestradiol",
+                  "gestodene and ethinylestradiol",
+                  "drospirenone and ethinylestradiol",
+                  "chlormadinone and ethinylestradiol",
+                  "dienogest and ethinylestradiol",
+                  "desogestrel and ethinylestradiol",
+                  "gestodene and ethinylestradiol",
+                  "cyproterone and estrogen",
+                  "desogestrel",
+                  "nomegestrol and estradiol",
+                  "dienogest and estradiol"),
+    hcu_class = c("EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "P4",
+                  "BI",
+                  "BI"),
+    pre_name = c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
+                 "MERCILON, PRACTIL, PLANUM, DESOREEN",
+                 "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
+                 "YASMINELLE, LUCINELLE, YASMIN, LUTIZ, LUSINE, YAZ, JASMINELLE, RUBIRA, LUSINELLE",
+                 "BELARA",
+                 "VALETTE, SIBILLA",
+                 "LUCILLE, GRACIAL",
+                 "MILVANE, TRIMINULET",
+                 "DIANE, VISOFID",
+                 "NACREZ, CERAZETTE",
+                 "ZOELY",
+                 "KLAIRA, QLAIRA")
+)
+
+#' restrict contraceptives to the ones in the subset
+contr_sub <- contr[contr$AID %in% rownames(prot_data_sub), ]
+
+#' Add ATC5 medication info to the data.
+prot_data_sub$atc_5 <- NA_character_
+prot_data_sub$atc_5[match(contr_sub$AID, rownames(prot_data_sub))] <-
+    contr_sub$atc_5
+
+#' add numbers
+cnts <- table(prot_data_sub$atc_5)
+oral_hcu$count <- as.integer(cnts[oral_hcu$ATC5])
+
+pandoc.table(
+    oral_hcu[, c("ATC5", "ATC5_name", "hcu_class", "count", "pre_name")],
+    style = "rmarkdown",
+    caption = paste0("Oral contraceptive preparations with ethinylestradiol ",
+                     "(EE), bioidentical estrogen (BI) or progestogen (P4) ",
+                     "in the present data set.")
+)
+```
+
+To define the data set for the analysis, we restrict the data for female
+participants below age of 40 to those that either take one of the oral
+contraceptives listed above, or that don't take any hormonal contraceptives
+(i.e. excluding all with ATC3 codes G03H (antiandrogens), G02B (contraceptives
+for topical use) or G03A (contraceptives for systemic use).
+
+```{r}
+#' Define participants that take any type of contraceptive
+aid_any_contraceptive <- med[med$atc_3 %in% c("G03H", "G02B", "G03A"), "AID"] |>
+    unique()
+#' Define participants that take any of the selected contraceptives
+aid_ohc <- med[med$atc_5 %in% oral_hcu$ATC5, "AID"] |> unique()
+#' subset: no contraceptives or selected contraceptives
+prot_data_ohc <- prot_data_sub[
+    (prot_data_sub$HCU == "No" &
+     !(rownames(prot_data_sub) %in% aid_any_contraceptive)) |
+    rownames(prot_data_sub) %in% aid_ohc, ]
+```
+
+Next we assign the class labels to the participants.
+
+```{r}
+prot_data_ohc$hcu_class <- "none"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "EE"]] <- "EE"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "P4"]] <- "P4"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "BI"]] <- "BI"
+prot_data_ohc$hcu_class <- factor(prot_data_ohc$hcu_class,
+                                  levels = c("none", "BI", "P4", "EE"))
+table(prot_data_ohc$hcu_class)
+```
+
+We next evaluate the abundances for HCU-associated proteins for these 3
+different preparation classes (in comparison to participants without use of
+hormonal contraceptives.
+
+```{r}
+#' Select the significant proteins.
+prot_hcu <- rownames(results_hcu)[results_hcu$significant_HCUYes]
+
+#' Plot per protein.
+library(beeswarm)
+library(vioplot)
+
+for (prot in prot_hcu) {
+    ann <- prot_ann[prot, c("Genes", "description")]
+    fl <- paste0(IMAGE_PATH, "HCU_med_beeswarm_",
+                 paste0(ann, collapse = "_"), ".png")
+    png(fl, width = 8, height = 8, units = "cm", res = 600, pointsize = 6)
+    par(mar = c(4, 5, 1.5, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n")
+    beeswarm(split(prot_data_ohc[, prot], prot_data_ohc$hcu_class),
+             ylab = expression(log[2]~abundance),
+             las = 2, pch = 16, cex = 0.9, col = "darkgrey",
+             method = "compactswarm", spacing = 0.4,
+             main = paste0(ann, collapse = "; "))
+    bxplot(split(prot_data_ohc[, prot], prot_data_ohc$hcu_class), add = TRUE,
+           probs = 0.5, lwd = 1)
+    grid()
+    dev.off()
+}
+
+#' Adjusting the protein concentrations for age, BMT and fasting.
+tmp <- lapply(proteins, function(z) {
+    a <- prot_data_ohc
+    a$y <- a[, z]
+    l <- lm(y ~ Age_10 + Fasting + BMIcat, data = a)
+    mean(a$y) + l$residuals
+})
+names(tmp) <- proteins
+prot_data_ohc_adj <- cbind(
+    prot_data_ohc[, c("BMIcat", "Sex", "Age", "Fasting", "HCU", "hcu_class")],
+    do.call(cbind, tmp))
+
+for (prot in prot_hcu) {
+    ann <- prot_ann[prot, c("Genes", "description")]
+    fl <- paste0(IMAGE_PATH, "HCU_med_beeswarm_",
+                 paste0(ann, collapse = "_"), "_adj.png")
+    png(fl, width = 8, height = 8, units = "cm", res = 600, pointsize = 6)
+    par(mar = c(4, 5, 1.5, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n")
+    beeswarm(split(prot_data_ohc_adj[, prot], prot_data_ohc_adj$hcu_class),
+             ylab = expression(log[2]~abundance[adj]),
+             las = 2, pch = 16, cex = 0.9, col = "darkgrey",
+             method = "compactswarm", spacing = 0.4,
+             main = paste0(ann, collapse = "; "))
+    bxplot(split(prot_data_ohc_adj[, prot], prot_data_ohc$hcu_class),
+           add = TRUE, probs = 0.5, lwd = 1)
+    grid()
+    dev.off()
+}
+
+```
+
+Next we fit protein-wise linear models to the data to identify proteins with
+significant differences in abundances between participants taking different
+hormonal contraceptive preparations and participants without HCU.
+
+```{r}
+#' Linear model
+fit_lm <- function(analyte, data) {
+    y <- data[, analyte]
+    l <- lm(y ~ Age_10 + Fasting + BMIcat + hcu_class, data = data)
+    res <- coef(summary(l))[-1, ]
+    vals <- data.frame(c(res[, 1L], res[, 4L]))
+    names(vals) <- analyte
+    rownames(vals) <- c(paste0("coef_", rownames(res)),
+                        paste0("p-value_", rownames(res)))
+    vals
+}
+res <- t(do.call(cbind, lapply(proteins, fit_lm, data = prot_data_ohc)))
+#' Adjusting for multiple hypothesis testing
+adjp <- apply(res[, grep("p-value", colnames(res))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+res <- cbind(res, adjp)
+
+#' Effect sizes
+prot_data_ohc_scaled <- prot_data_ohc
+prot_data_ohc_scaled[, proteins] <-
+    scale(prot_data_ohc_scaled[, proteins], scale = TRUE)
+es <- t(do.call(cbind, lapply(proteins, fit_lm, prot_data_ohc_scaled)))
+es <- es[, grep("coef", colnames(es))]
+colnames(es) <- sub("coef", "effect_size", colnames(es))
+
+#' Determine statistical significance
+comps <- colnames(res)[grep("coef", colnames(res))]
+sign_p <- res[, grep("p-adj", colnames(res))] < 0.05
+colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
+#' Determine significance
+diff_perc <- apply(res[, comps], MARGIN = 2, diff_percentage)
+colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
+#' define which metabolites are considered significant: require p-value < 0.05
+#' and difference in concentration > CV_QC (expressed in %)
+sign_cv <- lapply(comps, function(z) {
+    z <- sub("coef_", "", z)
+    sign_p[, paste0("significant_", z)] &
+        diff_perc[, paste0("diff_perc_", z)] > 100 *
+        prot_ann[proteins, "cv_qc_chris"]
+})
+sign_cv <- do.call(cbind, sign_cv)
+colnames(sign_cv) <- sub("coef", "significant", comps)
+#' Add the significant for numeric variable
+sign_cv[, "significant_Age_10"] <- sign_p[, "significant_Age_10"]
+
+#' Compile the results
+results_ohc <- data.frame(
+    prot_ann[proteins, c("description", "long_description", "PeptideNN",
+                         "PeptideNames", "Protein.Ids", "Protein.Names",
+                         "Genes", "Modified.Sequence", "Stripped.Sequence",
+                         "Precursor.Id", "cv_qc_chris")],
+    res, es, diff_perc, sign_cv)
+
+#' Export results.
+colnames(results_ohc) <- sub("^description$", "Uniprot", colnames(results_ohc))
+colnames(results_ohc) <- sub("^long_description$", "Description",
+                              colnames(results_ohc))
+write_xlsx(
+    results_ohc, path = paste0(dr, "/results_sex_age_bmi_ohc.xlsx"))
+```
+
+The table below lists the significant proteins for the various variables.
+
+```{r, results = "asis"}
+sig_tab <- data.frame(
+    `p_adj < 0.05` = colSums(sign_p),
+    cv = colSums(sign_cv),
+    check.names = FALSE)
+pandoc.table(
+    data.frame(no_sign = sig_tab, check.names = FALSE),
+    style = "rmarkdown",
+    caption = paste0("Number of significant proteins for each ",
+                     "comparison and definition of significance.",
+                     "cv: difference in concentration > * CV in QC samples."))
+```
+
+Only very few or no protein was found significantly different between BI or P4
+and no HCU. The number of significant proteins for EE contraceptives, in
+contrast, is very high. Note that the number of significant proteins is also
+dependent on the size of the different groups, and here EE is the largest group
+with the strongest statistical power. Below we evaluate the effect of the
+different preparations using volcano plots.
+
+```{r fig.cap = "Volcano plots showing the effect of different oral hormonal contraceptive preparations.", fig.width = 15, fig.height = 5}
+yl <- range(-log10(results_ohc[, c("p.adj_hcu_classEE", "p.adj_hcu_classBI",
+                                   "p.adj_hcu_classP4")]))
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBI",
+                            "coef_hcu_classP4")])
+
+par(mfrow = c(1, 3))
+y <- -log10(results_ohc$p.adj_hcu_classBI)
+x <- results_ohc$coef_hcu_classBI
+plot(x, y, main = "HCU: BI", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+y <- -log10(results_ohc$p.adj_hcu_classP4)
+x <- results_ohc$coef_hcu_classP4
+plot(x, y, main = "HCU: P4", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+y <- -log10(results_ohc$p.adj_hcu_classEE)
+x <- results_ohc$coef_hcu_classEE
+plot(x, y, main = "HCU: EE", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+```
+
+We next plot the coefficients for differential abundance of EE, BI or PI against
+no HCU against each other.
+
+```{r, fig.cap = "Comparison of coefficients representing differential abundance between EE, BI or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+a <- results_ohc$coef_hcu_classEE
+b <- results_ohc$coef_hcu_classBI
+d <- results_ohc$coef_hcu_classP4
+
+par(mfrow = c(1, 2), bty = "n")
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(coef[EE]), ylab = expression(coef[BI]),
+     xlim = xl, ylim = xl)
+l <- lm(b ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(coef[EE]), ylab = expression(coef[P4]),
+     xlim = xl, ylim = xl)
+l <- lm(d ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+```
+
+```{r}
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBI")])
+gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classBI)) +
+    geom_point(color = "#00000080", aes(text = Genes)) +
+    xlim(xl) +
+    ylim(xl) +
+    theme_bw()
+ggplotly(gg)
+```
+
+```{r}
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classP4")])
+gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classP4)) +
+    geom_point(color = "#00000080", aes(text = Genes)) +
+    xlim(xl) +
+    ylim(xl) +
+    theme_bw()
+ggplotly(gg)
+```
+
+
+
+Both, ethinylestradiol and bioidentical estrogen containing preparations affect
+about the same plasma proteins, but the effect of ethinylestradiol is stronger
+(on average about 50%). Progestogen containing preparations, on the other hand,
+affect, if at all, different proteins and seem to have in general a much lower
+impact on the plasma proteome.
+
+
+```{r, fig.cap = "Comparison of effect sizes between EE, BI or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+a <- results_ohc$effect_size_hcu_classEE
+b <- results_ohc$effect_size_hcu_classBI
+d <- results_ohc$effect_size_hcu_classP4
+
+par(mfrow = c(1, 2), bty = "n")
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[BI]),
+     xlim = xl, ylim = xl)
+l <- lm(b ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[P4]),
+     xlim = xl, ylim = xl)
+l <- lm(d ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+```
+
+
+
+## Validation of HCU results with Somalogic data
+
+To validate the results we check how measurements for HCU associated proteins
+quantified with Scanning SWATH might relate to Somalogic-based measurements.
+
+```{r}
+soma <- data_module("chris_somalogic", "1.0.3.2", chris_path)
+soma_data <- data(soma)
+soma_ann <- labels(soma)
+stopifnot(all(colnames(soma_data) == rownames(soma_ann)))
+colnames(soma_data) <- soma_ann$description
+rownames(soma_ann) <- soma_ann$description
+
+common_aid <- intersect(rownames(soma_data), rownames(prot_data_sub))
+soma_data <- soma_data[common_aid, ]
+prot_data_sub2 <- prot_data_sub[common_aid, ]
+
+```
+
+Evaluation of measurements for AGT (P01019); very nice.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "AGT")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P01019"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "AGT, P01019", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation of measurements for CP (P00450); less good match.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "CP")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P00450"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "CP, P00450", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for PGLYRP2 (Q96PD5); very nice.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "PGLYRP2")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "Q96PD5"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "PGLYRP2, Q96PD5", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for SERPINA6 (P08185); ah, well.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "SERPINA6")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P08185"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "SERPINA6, P08185", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for SHBG (); depending on the dilution factor good or less good.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "SHBG")
+soma_id <- soma_ann[idx[1], "description"]
+prot_id <- "P04278"
+
+par(mfrow = c(1, 2))
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "SHBG, P04278", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[2], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "SHBG, P04278", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+```
+
+Evaluation for FETUB (Q9UGM5); ok-ish.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "FETUB")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "Q9UGM5"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "FETUB, Q9UGM5", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for PLG (P00747); depending on the used dilution.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "PLG")
+prot_id <- "P00747"
+
+par(mfrow = c(1, 3))
+soma_id <- soma_ann[idx[1], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "PLG, P00747", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[2], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "PLG, P00747", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[3], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "PLG, P00747", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for GC (Q9UGM5); good.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "GC")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P02774;P02774-3"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "GC, P02774", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for SERPINA1 (P01009); good.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "SERPINA1")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P01009"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "SERPINA1, P01009", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for KNG1 (P01042;P01042-2); choose what you like.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "KNG1")
+prot_id <- "P01042;P01042-2"
+
+par(mfrow = c(2, 2))
+soma_id <- soma_ann[idx[1], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "KNG1, P01042", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[2], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "KNG1, P01042", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[3], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "KNG1, P01042", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+soma_id <- soma_ann[idx[4], "description"]
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "KNG1, P01042", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+
+```
+
+Evaluation for SERPINC1 (P01008); good.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "SERPINC1")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P01008"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "SERPINC1, P01008", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Evaluation for LUM (P51884); good.
+
+```{r}
+idx <- which(soma_ann$EntrezGeneSymbol == "LUM")
+soma_id <- soma_ann[idx, "description"]
+prot_id <- "P51884"
+
+x <- prot_data_sub2[, prot_id]
+y <- log2(soma_data[, soma_id])
+plot(x, y,
+     pch = 21, col = "#00000080", bg = "#00000040",
+     main = "LUM, P51884", xlab = "Scanning SWATH", ylab = "Somalogic")
+grid()
+l <- lm(y ~ x)
+abline(l)
+summary(l)
+```
+
+Checking the protein mentioned by reviewer 1 (LPA/apolipoprotein a) - for
+Somalogic we have however the different isoforms APOA1, APOA2, APOA4, APOA5.
+
+```{r}
+## idx <- which(soma_ann$EntrezGeneSymbol == "APOA")
+## soma_id <- soma_ann[idx, "description"]
+## prot_id <- "P08519"
+## idx <- which(soma_ann$UniProt == prot_id)
+
+## x <- prot_data_sub2[, prot_id]
+## y <- log2(soma_data[, soma_id])
+## plot(x, y,
+##      pch = 21, col = "#00000080", bg = "#00000040",
+##      main = "LUM, P51884", xlab = "Scanning SWATH", ylab = "Somalogic")
+## grid()
+## l <- lm(y ~ x)
+## abline(l)
+## summary(l)
+
 ```
 
 
