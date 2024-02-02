@@ -69,18 +69,18 @@ detected proteins.
 
 ```{r, results = "asis"}
 tab <- results[,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "cv_study",
                  "cv_qc_chris",
                  "relative_cv"
                  )]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$CV_{study}$", "$CV_{QC}$",
-                   "$CV_{rel}$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$",
+                   "$CV_{study}$", "$CV_{QC}$", "$CV_{rel}$")
 rownames(tab) <- NULL
-tab_sub <- tab[order(tab[, 3]), ][1:30, ]
+tab_sub <- tab[order(tab[, 4]), ][1:30, ]
 rownames(tab_sub) <- NULL
 pandoc.table(
-    tab_sub, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab_sub, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with lowest coefficient of variation across study samples. ",
@@ -92,10 +92,10 @@ pandoc.table(
 ```
 
 ```{r, results = "asis"}
-tab_sub <- tab[order(tab[, 5], decreasing = TRUE), ][1:30, ]
+tab_sub <- tab[order(tab[, 6], decreasing = TRUE), ][1:30, ]
 rownames(tab_sub) <- NULL
 pandoc.table(
-    tab_sub, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab_sub, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with the highest (relative) coefficient of variation across ",
@@ -111,11 +111,13 @@ pandoc.table(
 ## FDA Biomarkers
 fda <- read_xlsx("data/xlsx/FDA_approved_biomarkers.xlsx") |> as.data.frame()
 fda <- fda[!is.na(fda$uniprot_id), ]
-tab <- results[fda$uniprot_id, c("Uniprot", "Genes", "cv_study", "cv_qc_chris")]
-colnames(tab) <- c("$UniProt$", "$Genes$", "$CV_{study}$", "$CV_{QC}$")
+tab <- results[fda$uniprot_id, c("Uniprot", "Genes", "Description",
+                                 "cv_study", "cv_qc_chris")]
+colnames(tab) <- c("$UniProt$", "$Genes$", "$Description$",
+                   "$CV_{study}$", "$CV_{QC}$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Common disease biomarker proteins quantified in the present data set. ",
@@ -139,6 +141,7 @@ pandoc.table(
     tmp, split.table = "Inf", justity = c("cccc"),
     caption = paste0("Correlation between clinical laboratory measurements",
                      " and quantified protein abundances."))
+
 ```
 
 ```{r, results = "asis"}
@@ -169,6 +172,51 @@ cat("  \\caption{Principal component anaysis of the plasma proteome data. ",
     "Data points are colored according to usage of hormonal contraceptives.}\n",
     sep = "")
 cat("\\end{figure}\n")
+
+```
+
+# Influence of different combined oral contraceptives on the plasma proteome
+
+
+```{r, results = "asis"}
+tmp <- data.frame(
+    ATC5 = c("G03AA07", "G03AA09", "G03AA10", "G03AA12", "G03AA15",
+             "G03AA16", "G03AB05", "G03AB06", "G03HB01", "G03AC09",
+             "G03AA14", "G03AB08"),
+    `ATC4 name` = c("levonorgestrel and EE",
+                    "desogestrel and EE",
+                    "gestodene and EE",
+                    "drospirenone and EE",
+                    "chlormadinone and EE",
+                    "dienogest and EE",
+                    "desogestrel and EE",
+                    "gestodene and EE",
+                    "cyproterone and estrogen",
+                    "desogestrel",
+                    "nomegestrol and estradiol",
+                    "dienogest and estradiol"),
+    COC = c("EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE",
+            "P4", "BE", "BE"),
+    count = c(31, 10, 104, 67, 2, 5, 7, 7, 15, 6, 7, 10),
+    `Preparation name` =
+        c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
+          "MERCILON, PRACTIL, PLANUM, DESOREEN",
+          "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
+          "YASMINELLE, LUCINELLE, YASMIN, LUTIZ, LUSINE, YAZ, JASMINELLE, RUBIRA, LUSINELLE",
+          "BELARA",
+          "VALETTE, SIBILLA",
+          "LUCILLE, GRACIAL",
+          "MILVANE, TRIMINULET",
+          "DIANE, VISOFID",
+          "NACREZ, CERAZETTE",
+          "ZOELY",
+          "KLAIRA, QLAIRA")
+)
+
+pandoc.table(
+    tmp, justity = c("cccrc"), split.table = Inf,
+    caption = paste0("Combined Oral Contraceptive (COC) classes. ",
+                     "EE: ethinylestradiol."))
 
 ```
 
@@ -208,17 +256,17 @@ results <- as.data.frame(read_xlsx(
 rownames(results) <- results$Uniprot
 
 tab <- results[results$significant_SexFemale,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_SexFemale",
                  "p.adj_SexFemale",
                  "effect_size_SexFemale"
                  )]
 tab <- tab[order(tab$p.adj_SexFemale), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with significant difference in abundance between female ",
@@ -234,18 +282,18 @@ pandoc.table(
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
 tab <- results[results$significant_Age,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_Age_10",
                  "p.adj_Age_10",
                  "effect_size_Age_10"
                  )]
 tab <- tab[order(tab$p.adj_Age_10), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
-    split.cells = 50, style = "rmarkdown", digits = 3,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 2,
     caption = paste0(
         "Proteins significantly associated with participants' age. ",
         "$coef$, $ES$ and $p_{adj}$: coefficient (representing the log2 change",
@@ -296,17 +344,17 @@ pool) samples are considered significant.
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
 tab <- results[results$significant_BMIcat1,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_BMIcat1",
                  "p.adj_BMIcat1",
                  "effect_size_BMIcat1"
                  )]
 tab <- tab[order(tab$p.adj_BMIcat1), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with significant difference in abundance between ",
@@ -321,17 +369,17 @@ pandoc.table(
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
 tab <- results[results$significant_BMIcat3,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_BMIcat3",
                  "p.adj_BMIcat3",
                  "effect_size_BMIcat3"
                  )]
 tab <- tab[order(tab$p.adj_BMIcat3), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with significant difference in abundance between ",
@@ -346,17 +394,17 @@ pandoc.table(
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
 tab <- results[results$significant_BMIcat4,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_BMIcat4",
                  "p.adj_BMIcat4",
                  "effect_size_BMIcat4"
                  )]
 tab <- tab[order(tab$p.adj_BMIcat4), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with significant difference in abundance between ",
@@ -374,17 +422,17 @@ pandoc.table(
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
 tab <- results[results$significant_FastingNo,
-               c("Uniprot", "Genes",
+               c("Uniprot", "Genes", "Description",
                  "coef_FastingNo",
                  "p.adj_FastingNo",
                  "effect_size_FastingNo"
                  )]
 tab <- tab[order(tab$p.adj_FastingNo), ]
-colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                   "$ES$")
+colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                   "$p_{adj}$", "$ES$")
 rownames(tab) <- NULL
 pandoc.table(
-    tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+    tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
     split.cells = 50, style = "rmarkdown", digits = 3,
     caption = paste0(
         "Proteins with significant difference in abundance between ",
@@ -525,16 +573,16 @@ colnames(atc_3_names) <- c("atc", "name", "var")
 
 for (i in seq_len(nrow(atc_3_names))) {
     tab <- atc3[atc3[, paste0("significant_", atc_3_names$var[i])],
-                c("Uniprot", "Genes",
+                c("Uniprot", "Genes", "Description",
                   paste0("coef_", atc_3_names$var[i]),
                   paste0("p.adj_", atc_3_names$var[i]),
                   paste0("effect_size_", atc_3_names$var[i]))]
     tab <- tab[order(tab[, paste0("p.adj_", atc_3_names$var[i])]), ]
-    colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                       "$ES$")
+    colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                       "$p_{adj}$", "$ES$")
     rownames(tab) <- NULL
     pandoc.table(
-        tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+        tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
         split.cells = 50, style = "rmarkdown", digits = 3,
         caption = paste0(
             "Proteins significantly associated with ATC level 3 medication *",
@@ -657,16 +705,16 @@ atc4_table <- atc4_table[order(atc4_table$Proteins, decreasing = TRUE), ]
 
 for (i in seq_len(nrow(atc4_table))) {
     tab <- atc4[atc4[, paste0("significant_", atc4_table$var[i])],
-                c("Uniprot", "Genes",
+                c("Uniprot", "Genes", "Description",
                   paste0("coef_", atc4_table$var[i]),
                   paste0("p.adj_", atc4_table$var[i]),
                   paste0("effect_size_", atc4_table$var[i]))]
     tab <- tab[order(tab[, paste0("p.adj_", atc4_table$var[i])]), ]
-    colnames(tab) <- c("$UniProt$", "$Gene$", "$coef$", "$p_{adj}$",
-                       "$ES$")
+    colnames(tab) <- c("$UniProt$", "$Gene$", "$Description$", "$coef$",
+                       "$p_{adj}$", "$ES$")
     rownames(tab) <- NULL
     pandoc.table(
-        tab, split.table = "Inf", justify = "ccrrr", keep.line.breaks = FALSE,
+        tab, split.table = "Inf", justify = "cccrrr", keep.line.breaks = FALSE,
         split.cells = 50, style = "rmarkdown", digits = 3,
         caption = paste0(
             "Proteins significantly associated with ATC level 4 medication *",

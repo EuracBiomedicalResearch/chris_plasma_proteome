@@ -4,6 +4,10 @@
 \captionsetup[figure]{format=plain,labelformat=S}
 \captionsetup[table]{format=plain,labelformat=S}
 
+\usepackage{etoolbox}
+\BeforeBeginEnvironment{longtable}{\begin{center}\footnotesize}
+\AfterEndEnvironment{longtable}{\end{center}}
+
 \usepackage[]{graphicx}
 \usepackage[]{color}
 
