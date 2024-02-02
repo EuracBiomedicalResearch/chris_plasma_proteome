@@ -481,8 +481,9 @@ ggplotly_or_not(age_2, PLOTLY)
 ```
 
 Clearly there is an enrichment of young women among participants using hormonal
-contraceptives. We next evaluate which preparations are taken as hormonal
-contraceptives.
+contraceptives. We next extract the information on the individual hormonal
+contraceptive preparations to then (later) classify and categorize them based on
+the type of hormones they contain.
 
 ```{r}
 contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
@@ -497,6 +498,7 @@ contr_atc5 <- lapply(tmp, function(z) {
 })
 contr_atc5 <- do.call(rbind, contr_atc5)
 
+#' to manually go through preparations to classify.
 write_xlsx(contr_atc5, path = "contraceptives.xlsx")
 
 pandoc.table(
@@ -504,87 +506,7 @@ pandoc.table(
     caption = "Types of hormonal contraceptives taken by participants.")
 ```
 
-Among them, G03AB08 (dienogest and estradiol) use bioidentical hormone
-(estradiol valerate) and G03AC09 (desogestrel) progesteron only were described
-to have more neutral effects than other combined preparations that include
-ethinylestradiol [Kangasniemi et al. Human Reprod. 2023].
-
-
-```{r, eval = TRUE}
-contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
-                                   "CONTRACEPTIVES FOR TOPICAL USE",
-                                   "ANTIANDROGENS"), ]
-table(contr$atc_3)
-
-G03H <- contr[contr$atc_3 == "G03H", ]
-G02B <- contr[contr$atc_3 == "G02B", ]
-G03A <- contr[contr$atc_3 == "G03A", ]
-
-table(G03H$atc_4_name)
-table(G02B$atc_4_name)
-table(G03A$atc_4_name)
-
-png("contraceptives_coloring.png", width = 10, height = 10, units = "cm",
-    res = 600, pointsize = 4)
-cols <- rep("#99999920", nrow(prot_data))
-cols[rownames(prot_data) %in% G03H$AID] <- "#FF0000FF"
-cols[rownames(prot_data) %in% G02B$AID] <- "#00FF00FF"
-cols[rownames(prot_data) %in% G03A$AID] <- "#0000FFFF"
-par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-arrows(x0 = 0, x1 = y[, 1],
-       y0 = 0, y1 = y[, 2],
-       lwd = 0.75, angle = 30, length = 0.05,
-       col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
-     col = "#00000080", cex = 1.4)
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
-       cex = 1.5)
-grid()
-dev.off()
-## Summary: green ones (G02B topical use) seem split half/half.
-
-
-png("contraceptives_topical_coloring.png", width = 10, height = 10,
-    units = "cm", res = 600, pointsize = 4)
-cols <- rep("#99999920", nrow(prot_data))
-cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BA", "AID"]] <- "#FF0000FF"
-cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BB", "AID"]] <- "#0000FFFF"
-par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-arrows(x0 = 0, x1 = y[, 1],
-       y0 = 0, y1 = y[, 2],
-       lwd = 0.75, angle = 30, length = 0.05,
-       col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
-     col = "#00000080", cex = 1.4)
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
-       cex = 1.5)
-grid()
-dev.off()
-
-## Now, that's fun: blue (G02BB, intravaginal) behave like oral contraceptives,
-## red (G02A, intrauterine) like "normal". Thats expected, since the
-## intrauterine contraceptives are expected to act mostly locally, while the
-## intravaginal mostly systemic (while by-passing the liver).
-
-```
+The table above was exported and manually evaluated.
 
 Additionally, we evaluated the predictive ability of all plasma proteins for
 hormonal contraceptive use. To ensure comparability, we match the users of
@@ -778,7 +700,6 @@ FunForLinReg <- function(AnalyteName, Data) {
                             paste0("p-value_", rownames(res)))
     return(p.Values)
 }
-## do it in one run
 LMRegtests <- do.call(
     cbind, lapply(proteins, function(x) FunForLinReg(x, prot_data)))
 Test_output <- t(LMRegtests)
@@ -800,7 +721,6 @@ differences.
 ## perform data normalization (autoscaling)
 prot_data_AS <- prot_data
 prot_data_AS[, proteins] <- scale(prot_data_AS[, proteins], scale = TRUE)
-## do it in one run
 LMRegtests_AS <- do.call(cbind.data.frame,
                          lapply(proteins,
                                 function(x) FunForLinReg(x, prot_data_AS)))
@@ -954,7 +874,7 @@ significant_points(results, comparison = "SexFemale")
 ## Figure for paper.
 dr <- "images/manuscript/"
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
-png(paste0(dr, "_Figure_3ab.png"), width = 8.6, height = 4.1, units = "cm",
+png(paste0(dr, "_Figure_4ab.png"), width = 8.6, height = 4.1, units = "cm",
     res = 600, pointsize = 3.5)
 par(mar = c(4, 4.7, 1, 1.5), mfrow = c(1, 2), cex.axis = 2,
     cex.lab = 2, cex.main = 2.5)
@@ -972,7 +892,7 @@ any_sig <- results$significant_BMIcat1 | results$significant_BMIcat3 |
 coefs <- results[any_sig, c("coef_BMIcat1", "coef_BMIcat3", "coef_BMIcat4")]
 colnames(coefs) <- c("1-2", "3-2", "4-2")
 rownames(coefs) <- results[rownames(coefs), "Genes"]
-pheatmap(coefs, filename = paste0(dr, "_Figure_3c.png"),
+pheatmap(coefs, filename = paste0(dr, "_Figure_4c.png"),
          width = 2.8, height = 3.8,
          breaks = seq(-0.5, 0.5, length.out = 101))
 ```
@@ -1551,10 +1471,9 @@ abline(0, 1)
 Adjustment for hormonal contraceptive use has only a minimal influence on the
 results for BMI.
 
-
 ```{r}
 ## Figure 4 paper.
-png("images/manuscript/Figure_4.png", width = 12, height = 4, units = "cm",
+png("images/manuscript/Figure_5.png", width = 12, height = 4, units = "cm",
     res = 600, pointsize = 4)
 par(mfrow = c(1, 3), mar = c(4.5, 4.5, 1.5, 0.5), cex.lab = 2, bty = "n",
     cex.main = 2.5, cex.axis = 2)
@@ -1682,7 +1601,7 @@ FunForLinRegHCU <- function(AnalyteName, Data) {
     names(p.Values) <- AnalyteName
     rownames(p.Values) <- c(paste0("coef_", rownames(res)),
                             paste0("p-value_", rownames(res)))
-    return(p.Values)
+    p.Values
 }
 
 ## Fit model
@@ -1875,14 +1794,16 @@ progesteron only preparations [@kangasniemi_ethinylestradiol_2023]. We thus here
 evaluate whether we see differences in the abundances of participants by
 hormonal preparations.
 
-For the analysis, we first restrict to oral contraceptives and categorize them
-into preparations that contain ethinylestradiol (EE), preparations with
-bioidentical hormones (BI) and progestogen preparations (P4). In the present
+For the analysis, we first restrict to oral contraceptives, excluding
+intravaginal and intrauterine contraceptives as well as patches, and categorize
+them into preparations that contain ethinylestradiol (EE), preparations with
+bioidentical estrogens (BE) and progestogen preparations (P4). In the present
 data set, two preparations contain bioidentical hormones: ZOELY (estradiol (E2))
 and KLAIRA (estradiol valerate (EV)).
 
 ```{r, results = "asis"}
-#' Define the table with contraceptives.
+#' Define the table with contraceptives; this bases on the manual evaluation
+#' of all preparations exported to an xlsx sheet above.
 oral_hcu <- data.frame(
     ATC5 = c("G03AA07",
              "G03AA09",
@@ -1918,8 +1839,8 @@ oral_hcu <- data.frame(
                   "EE",
                   "EE",
                   "P4",
-                  "BI",
-                  "BI"),
+                  "BE",
+                  "BE"),
     pre_name = c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
                  "MERCILON, PRACTIL, PLANUM, DESOREEN",
                  "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
@@ -1950,7 +1871,7 @@ pandoc.table(
     oral_hcu[, c("ATC5", "ATC5_name", "hcu_class", "count", "pre_name")],
     style = "rmarkdown",
     caption = paste0("Oral contraceptive preparations with ethinylestradiol ",
-                     "(EE), bioidentical estrogen (BI) or progestogen (P4) ",
+                     "(EE), bioidentical estrogen (BE) or progestogen (P4) ",
                      "in the present data set.")
 )
 ```
@@ -1958,8 +1879,8 @@ pandoc.table(
 To define the data set for the analysis, we restrict the data for female
 participants below age of 40 to those that either take one of the oral
 contraceptives listed above, or that don't take any hormonal contraceptives
-(i.e. excluding all with ATC3 codes G03H (antiandrogens), G02B (contraceptives
-for topical use) or G03A (contraceptives for systemic use).
+(i.e. excluding also all participants all with ATC3 codes G03H (antiandrogens),
+G02B (contraceptives for topical use) or G03A (contraceptives for systemic use).
 
 ```{r}
 #' Define participants that take any type of contraceptive
@@ -1983,9 +1904,9 @@ prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
 prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
                         oral_hcu$ATC5[oral_hcu$hcu_class == "P4"]] <- "P4"
 prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
-                        oral_hcu$ATC5[oral_hcu$hcu_class == "BI"]] <- "BI"
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "BE"]] <- "BE"
 prot_data_ohc$hcu_class <- factor(prot_data_ohc$hcu_class,
-                                  levels = c("none", "BI", "P4", "EE"))
+                                  levels = c("none", "BE", "P4", "EE"))
 table(prot_data_ohc$hcu_class)
 ```
 
@@ -2111,7 +2032,7 @@ results_ohc <- data.frame(
 #' Export results.
 colnames(results_ohc) <- sub("^description$", "Uniprot", colnames(results_ohc))
 colnames(results_ohc) <- sub("^long_description$", "Description",
-                              colnames(results_ohc))
+                             colnames(results_ohc))
 write_xlsx(
     results_ohc, path = paste0(dr, "/results_sex_age_bmi_ohc.xlsx"))
 ```
@@ -2131,23 +2052,23 @@ pandoc.table(
                      "cv: difference in concentration > * CV in QC samples."))
 ```
 
-Only very few or no protein was found significantly different between BI or P4
-and no HCU. The number of significant proteins for EE contraceptives, in
-contrast, is very high. Note that the number of significant proteins is also
-dependent on the size of the different groups, and here EE is the largest group
-with the strongest statistical power. Below we evaluate the effect of the
-different preparations using volcano plots.
+Only very few proteins, or none were found significant for BE or P4 while a
+large number of significant proteins were identified for EE
+contraceptives. These results are however also affected by the large differences
+in sample sizes for the different preparation groups: the statistical power for
+BE or P4, with sample sizes of 17 or 6, respectively, is much lower resulting
+thus in fewer significant proteins.
 
 ```{r fig.cap = "Volcano plots showing the effect of different oral hormonal contraceptive preparations.", fig.width = 15, fig.height = 5}
-yl <- range(-log10(results_ohc[, c("p.adj_hcu_classEE", "p.adj_hcu_classBI",
+yl <- range(-log10(results_ohc[, c("p.adj_hcu_classEE", "p.adj_hcu_classBE",
                                    "p.adj_hcu_classP4")]))
-xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBI",
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBE",
                             "coef_hcu_classP4")])
 
 par(mfrow = c(1, 3))
-y <- -log10(results_ohc$p.adj_hcu_classBI)
-x <- results_ohc$coef_hcu_classBI
-plot(x, y, main = "HCU: BI", xlab = "coefficient",
+y <- -log10(results_ohc$p.adj_hcu_classBE)
+x <- results_ohc$coef_hcu_classBE
+plot(x, y, main = "HCU: BE", xlab = "coefficient",
      ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
      col = "#000000ce", bg = "#00000060")
 grid()
@@ -2168,18 +2089,20 @@ grid()
 
 ```
 
-We next plot the coefficients for differential abundance of EE, BI or PI against
-no HCU against each other.
+The range of observed coefficients seem to be somewhat comparable between the
+different groups, but p-values are much lower for EE preparations. We thus next
+directly compare the coefficients for the different hormonal preparation
+classes.
 
-```{r, fig.cap = "Comparison of coefficients representing differential abundance between EE, BI or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+```{r, fig.cap = "Comparison of coefficients representing differential abundance between EE, BE or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
 a <- results_ohc$coef_hcu_classEE
-b <- results_ohc$coef_hcu_classBI
+b <- results_ohc$coef_hcu_classBE
 d <- results_ohc$coef_hcu_classP4
 
 par(mfrow = c(1, 2), bty = "n")
 xl <- range(c(a, b, d))
 plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
-     xlab = expression(coef[EE]), ylab = expression(coef[BI]),
+     xlab = expression(coef[EE]), ylab = expression(coef[BE]),
      xlim = xl, ylim = xl)
 l <- lm(b ~ a)
 abline(l)
@@ -2189,16 +2112,32 @@ grid()
 plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
      xlab = expression(coef[EE]), ylab = expression(coef[P4]),
      xlim = xl, ylim = xl)
-l <- lm(d ~ a)
-abline(l)
-legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+l2 <- lm(d ~ a)
+abline(l2)
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
 grid()
 
 ```
 
+The result from the linear model comparing BE against EE.
+
 ```{r}
-xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBI")])
-gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classBI)) +
+summary(l)
+```
+
+Correlation between coefficients is thus high, and, with a slope of 0.39, EE
+show an about 50% stronger effect than BE. The result from the linear model
+comparing P4 against EE.
+
+```{r}
+summary(l2)
+```
+
+Correlation of coefficients between P4 and EE is poor.
+
+```{r}
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBE")])
+gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classBE)) +
     geom_point(color = "#00000080", aes(text = Genes)) +
     xlim(xl) +
     ylim(xl) +
@@ -2216,24 +2155,23 @@ gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classP4)) +
 ggplotly(gg)
 ```
 
+Summarizing, both, ethinylestradiol and bioidentical estrogen containing
+preparations affect about the same plasma proteins, but the effect of
+ethinylestradiol is stronger (on average about 50%). Progestogen containing
+preparations, on the other hand, affect, if at all, different proteins and seem
+to have in general a much lower impact on the plasma proteome.
 
+For completeness we also compare the effect sizes against each other.
 
-Both, ethinylestradiol and bioidentical estrogen containing preparations affect
-about the same plasma proteins, but the effect of ethinylestradiol is stronger
-(on average about 50%). Progestogen containing preparations, on the other hand,
-affect, if at all, different proteins and seem to have in general a much lower
-impact on the plasma proteome.
-
-
-```{r, fig.cap = "Comparison of effect sizes between EE, BI or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+```{r, fig.cap = "Comparison of effect sizes between EE, BE or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
 a <- results_ohc$effect_size_hcu_classEE
-b <- results_ohc$effect_size_hcu_classBI
+b <- results_ohc$effect_size_hcu_classBE
 d <- results_ohc$effect_size_hcu_classP4
 
 par(mfrow = c(1, 2), bty = "n")
 xl <- range(c(a, b, d))
 plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
-     xlab = expression(ES[EE]), ylab = expression(ES[BI]),
+     xlab = expression(ES[EE]), ylab = expression(ES[BE]),
      xlim = xl, ylim = xl)
 l <- lm(b ~ a)
 abline(l)
@@ -2243,11 +2181,49 @@ grid()
 plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
      xlab = expression(ES[EE]), ylab = expression(ES[P4]),
      xlim = xl, ylim = xl)
-l <- lm(d ~ a)
-abline(l)
-legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+l2 <- lm(d ~ a)
+abline(l2)
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
 grid()
 
+```
+
+```{r}
+png("images/manuscript/Figure_3.png", width = 10, height = 5, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 1.5, 0.5), cex.lab = 1.5, bty = "n",
+    cex.main = 2.5, cex.axis = 1.5, cex = 1.5)
+
+a <- results_ohc$effect_size_hcu_classEE
+b <- results_ohc$effect_size_hcu_classBE
+d <- results_ohc$effect_size_hcu_classP4
+
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[BE]),
+     xlim = xl, ylim = xl)
+l <- lm(b ~ a)
+abline(l)
+grid()
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[P4]),
+     xlim = xl, ylim = xl)
+l2 <- lm(d ~ a)
+abline(l2)
+grid()
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
+dev.off()
+```
+
+
+```{r}
+summary(l)
+```
+
+```{r}
+summary(l2)
 ```
 
 
