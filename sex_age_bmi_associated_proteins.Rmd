@@ -303,7 +303,7 @@ arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
        lwd = 0.75, angle = 30, length = 0.05,
        col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
      col = "#00000080", cex = 1.4)
 points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
@@ -423,8 +423,6 @@ ggplotly_or_not(gg_2, PLOTLY)
 ## Same plot but with coloring representing HCU.
 png("images/manuscript/supplement/Figure_S149.png", width = 8.2, height = 6.4,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
-cols <- rep("#999999", nrow(prot_data))
-cols[prot_data$HCU == "Yes"] <- "#FF7F00"
 par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
 plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
          xlim = c(-16, 9))
@@ -439,8 +437,12 @@ arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
        lwd = 0.75, angle = 30, length = 0.05,
        col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
      col = "#00000080", cex = 1.4)
+
+cols <- rep("#E41A1C", nrow(prot_data))
+cols[prot_data$Sex == "Male"] <- "#377EB8"
+cols[prot_data$HCU == "Yes"] <- "#000000"
 points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
 grid()
@@ -511,15 +513,15 @@ The table above was exported and manually evaluated.
 Additionally, we evaluated the predictive ability of all plasma proteins for
 hormonal contraceptive use. To ensure comparability, we match the users of
 hormonal contraceptives to a control group of identical size (n = 275).  Only
-non-pregnant women under 40 years not taking hormonal contraceptives were
+non-pregnant women below the age of 40 not taking hormonal contraceptives were
 considered for the control group.
 
 ```{r}
 ## Prepare Data for matching
 ## Filter for  HCU users and controls
-filter_hcu <- prot_data$Age <= 40 & prot_data$HCU == "Yes" &
+filter_hcu <- prot_data$Age < 40 & prot_data$HCU == "Yes" &
     prot_data$Pregnant == "No"
-filter_control <- prot_data$Age <= 40 & prot_data$HCU == "No" &
+filter_control <- prot_data$Age < 40 & prot_data$HCU == "No" &
     prot_data$Pregnant == "No"
 
 women_hcu <- na.omit(prot_data[filter_hcu, ])
@@ -1571,7 +1573,7 @@ significantly associated with hormonal contraceptive use.
 
 While proteins significantly associated with hormonal contraceptive use were
 already defined in the previous section on the *full* linear model, we perform
-again the analysis restricting to female participants below 40 years of age to
+again the analysis restricting to female participants below the age of 40 to
 reduce any potential influence of sex and age on the identified proteins (since
 hormonal contraceptive use is clearly related with sex and age). In this subset
 we fit linear models to the data explaining protein abundances by the
@@ -1582,6 +1584,7 @@ identify proteins significantly associated with hormonal contraceptive use.
 ```{r}
 prot_data_sub <- prot_data[
     which(prot_data$Age < 40 & prot_data$Sex == "Female"), ]
+
 ```
 
 A summary of the data subset is given below.
@@ -1877,7 +1880,7 @@ pandoc.table(
 ```
 
 To define the data set for the analysis, we restrict the data for female
-participants below age of 40 to those that either take one of the oral
+participants below the age of 40 to those that either take one of the oral
 contraceptives listed above, or that don't take any hormonal contraceptives
 (i.e. excluding also all participants all with ATC3 codes G03H (antiandrogens),
 G02B (contraceptives for topical use) or G03A (contraceptives for systemic use).
@@ -1906,7 +1909,7 @@ prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
 prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
                         oral_hcu$ATC5[oral_hcu$hcu_class == "BE"]] <- "BE"
 prot_data_ohc$hcu_class <- factor(prot_data_ohc$hcu_class,
-                                  levels = c("none", "BE", "P4", "EE"))
+                                  levels = c("none", "BE", "EE", "P4"))
 table(prot_data_ohc$hcu_class)
 ```
 
@@ -1967,6 +1970,48 @@ for (prot in prot_hcu) {
     grid()
     dev.off()
 }
+
+#' Beeswarm plot of top 4 significant proteins for the Supplement
+#'
+png("images/manuscript/supplement/Figure_COCs_beeswarm.png", width = 14,
+    height = 12, units = "cm", res = 600, pointsize = 5)
+
+par(mfrow = c(2, 2), cex.axis = 1.5, cex.lab = 1.5, bty = "n",
+    mar = c(4.5, 4.5, 2, 1), cex.main = 2)
+beeswarm(split(prot_data_ohc_adj[, "P01019"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P01019", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P01019"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "P00450"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P00450", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P00450"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "Q96PD5"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["Q96PD5", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "Q96PD5"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "P08185"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P08185", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P08185"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+
+dev.off()
 
 ```
 
@@ -3051,7 +3096,7 @@ As expected, a clear difference in age distribution can be seen between the
 categories. To reduce the influence of age we restrict the analysis to a smaller
 age range.
 
-```{r, fig.cap = "Age distribution for women below 40 in the various HCU categories."}
+```{r, fig.cap = "Age distribution for women below the age of 40 in the various HCU categories."}
 women_data_40 <- women_data[women_data$Age < 40, ]
 
 table(women_data_40$HCU_history)
@@ -3063,7 +3108,7 @@ grid()
 
 We next evaluate the concentration of AGT in the different groups.
 
-```{r, fig.cap = "Abundance of AGT in women (below age of 40) in the various HCU categories."}
+```{r, fig.cap = "Abundance of AGT in women (below the age of 40) in the various HCU categories."}
 vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
         main = "AGT, HCU, age < 40", ylab = expression(log[2]~abundance))
 grid()
@@ -3077,7 +3122,7 @@ however not take the last time hormonal contraceptives were taken into account.
 We next evaluate differences in protein concentrations between participants
 currently taking hormonal contraceptives and those that never used them as well
 as between participants previously taking hormonal contraceptives and those that
-never used them. This analysis is performed on female participants of age below
+never used them. This analysis is performed on female participants below the age
 40 for which clear information on current or past hormonal contraceptive use is
 available.
 
@@ -3284,7 +3329,7 @@ women_data_40$eHCU_free_period <- women_data_40$Age -
 The distribution of this *HCU free period* for women that took HCU in the past
 is shown below. Note that we remove negative values.
 
-```{r, fig.cap = "Distribution of estimated HCU free period for women (below 40) with past HCU."}
+```{r, fig.cap = "Distribution of estimated HCU free period for women (below the age of 40) with past HCU."}
 women_data_40_past <- women_data_40[women_data_40$HCU_history == "past", ]
 
 #' Remove negative values
@@ -3293,13 +3338,13 @@ women_data_40_past$eHCU_free_period[which(women_data_40_past$eHCU_free_period < 
 
 plot(density(women_data_40_past$eHCU_free_period, na.rm = TRUE),
      xlab = "estimated time period without HCU",
-     main = "Women below 40 with previous HCU")
+     main = "Women below the age of 40 with previous HCU")
 ```
 
 For these we next evaluate whether there is a dependency between the estimated
 HCU free time period and concentrations for selected proteins.
 
-```{r, fig.cap = "Relationship between AGT plasma concentrations and HCU free time for women below 40 with past HCU."}
+```{r, fig.cap = "Relationship between AGT plasma concentrations and HCU free time for women below the age of 40 with past HCU."}
 
 x <- women_data_40_past$eHCU_free_period
 y <- women_data_40_past$P01019

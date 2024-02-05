@@ -168,12 +168,36 @@ cat("\\centering\n")
 cat("  \\includegraphics[width=0.7\\textwidth]{",
     "images/manuscript/supplement/Figure_S149.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the plasma proteome data. ",
-    "Data points are colored according to usage of hormonal contraceptives.}\n",
-    sep = "")
+cat("  \\caption{Principal component anaysis of the CHRIS plasma proteome ",
+    "data. Blue and red points indicate male and female participants",
+    "participants using hormonal contraceptives are colored grey.}\n")
 cat("\\end{figure}\n")
 
 ```
+
+
+# Replication of results in the BASE II cohort
+
+Influence of hormonal contraceptives on the plasma proteome of female study
+participants below the age of 40 was validated using data from an independent
+cohort, the BASE II study.
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/pca_baseII_sex_hcu_yr.png}\n",
+    sep = "")
+cat("  \\caption{Principal component anaysis of the plasma proteome data",
+    "from the BASE II cohort. BASE II plasma proteome data was restricted to",
+    "the 131 proteins common with CHRIS and to data from participants of age",
+    "< 40. Blue and red points indicate male and female participants",
+    "participants using hormonal contraceptives are colored grey.}\n")
+cat("\\end{figure}\n")
+
+```
+
+
 
 # Influence of different combined oral contraceptives on the plasma proteome
 
@@ -219,6 +243,24 @@ pandoc.table(
                      "EE: ethinylestradiol."))
 
 ```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=1.1\\textwidth]{",
+    "images/manuscript/supplement/Figure_COCs_beeswarm.png}\n",
+    sep = "")
+cat("  \\caption{Abundances of proteins significantly associated with hormonal",
+    "contraceptive use for different types of combined oral contraceptives.",
+    "\\textit{EE}: preparations containing ethinylestradiol, \\textit{BE}:",
+    "preparations with bioidentical estrogen, \\textit{P4}: progestogen",
+    "preparations. Shown are individual data points in grey and median",
+    "abundances per group as black horizontal lines.",
+    "Abundances are adjusted for age, (categorical) BMI and fasting status.}\n")
+cat("\\end{figure}\n")
+
+```
+
 
 
 # Previous hormonal contraceptive use
