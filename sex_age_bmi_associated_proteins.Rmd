@@ -487,7 +487,7 @@ contraceptives. We next extract the information on the individual hormonal
 contraceptive preparations to then (later) classify and categorize them based on
 the type of hormones they contain.
 
-```{r}
+```{r, results = "asis"}
 contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
                                    "CONTRACEPTIVES FOR TOPICAL USE",
                                    "ANTIANDROGENS"), ]

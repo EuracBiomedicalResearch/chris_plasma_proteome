@@ -183,6 +183,23 @@ participants below the age of 40 was validated using data from an independent
 cohort, the BASE II study.
 
 ```{r, results = "asis"}
+tmp <- data.frame(
+    Female = c("240", "28.7 (3.1)", "", "", "22 (9.2%)",
+               "172 (71.7%)", "31 (12.9%)", "15 (6.3%)"),
+    Male = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
+             "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
+)
+rownames(tmp) <- c("n", "Age [mean (SD)]", "Classification according",
+                   "to BMI, n (%)", "1: underweight", "2: normal",
+                   "3: overweight", "4: obese")
+pandoc.table(
+    tmp, split.table = "Inf", justity = c("ccc"),
+    caption = paste0("Demographic characteristics of the BASE II study ",
+                     "participants included in the analysis."))
+
+```
+
+```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
 cat("  \\includegraphics[width=0.7\\textwidth]{",
@@ -196,7 +213,6 @@ cat("  \\caption{Principal component anaysis of the plasma proteome data",
 cat("\\end{figure}\n")
 
 ```
-
 
 
 # Influence of different combined oral contraceptives on the plasma proteome
