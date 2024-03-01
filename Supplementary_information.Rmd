@@ -170,7 +170,9 @@ cat("  \\includegraphics[width=0.7\\textwidth]{",
     sep = "")
 cat("  \\caption{Principal component anaysis of the CHRIS plasma proteome ",
     "data. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives are colored grey.}\n")
+    "participants using hormonal contraceptives (ATC level 3 code G03A, ",
+    "hormonal contraceptives for systemic use, and ATC level 4 G03HB, ",
+    "antiandrogens and estrogens) are colored grey.}\n")
 cat("\\end{figure}\n")
 
 ```
