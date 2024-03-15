@@ -1,0 +1,562 @@
+---
+title: "
+Association analysis for hormonal contraceptive use (HCU) on the plasma proteome in the Berlin Aging Study II (BASE II)"
+author: "Clemens Dierks, Nikola Dordevic, Johannes Rainer"
+date: "2024-01-25"
+graphics: yes
+output: 
+  html_document:
+    toc_float: true
+    code_folding: hide
+    
+---
+
+**Modified**: `r file.info("sex_age_bmi_associated_proteins.Rmd")$mtime`<br />
+**Compiled**: `r date()`
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = F, message = F)
+```
+
+## Introduction
+
+This document provides a validation of the study findings from Dordevic, Dierks et al. (MedArxiv, <https://doi.org/10.1101/2023.10.11.23296871>) on the Berlin Aging study II (BASE II) study concerning the influence of hormonal contraceptives on the mass spetrometry (MS)-based plasma proteome. The BASE II study is a population study comprising of n = 2200 mostly healthy participants from the adult Berlin metropolitan population. N = 1873 plasma proteomes were measured. For the validation of our results found earlier in the CHRIS cohort, we select only the younger population of n=437 individuals.
+
+For comparability reasons, we only included proteins measured in both studies (n=119). In BASE II, the use of hormonal contraceptives in the last three months is recorded on the basis of self-reported questionnaires.
+
+## Data import and cleaning
+
+```         
+
+```
+
+```{r data-libraries}
+library(RColorBrewer)
+library(pander)
+library(pheatmap)
+library(DT)
+library(ggfortify)
+library(ggplot2)
+library(ggpubr)
+library(reshape2)
+library(plotly)
+options(rgl.useNULL = TRUE)
+library(rgl)
+library(readxl)
+library(writexl)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+library(vioplot)
+
+base_data <- read.csv("../../data/merged/BASEII_merged_proteins_imp_new.csv", check.names = F)
+base_uniprot_gene_mapping  <- read.csv("../../data/proteomics/BASEII_uni_prot_ids.csv")
+chris_results <- read_excel("../../results/tables/Supplementary_Table_S1.xlsx")# association analysis results for CHRIS
+
+# select younger population
+base_data <- base_data[base_data$Age_T0 < 40,]
+
+# We exclude all participants with non-reported BMI
+base_data <- subset(base_data, !is.na(BMI))
+# Create Variable with BMI Categories
+base_data$bmi_cat <- cut(base_data$BMI, breaks = c(-Inf, 18.5, 25, 30, Inf), labels = c(1, 2, 3, 4), include.lowest = TRUE )
+# Create Age groups (10 years)
+base_data$age_10 <- base_data$Age_T0/10
+
+# drop unwanted results 
+drop_proteins <- c("P04217;P04217-2", "P23142;P23142-4", "P06396;P06396-2", "Q14624;Q14624-2", "P01042-2")
+chris_results <- chris_results[!(chris_results$Uniprot %in% drop_proteins), ]
+chris_gene_symbols <- chris_results$Genes
+
+
+# we only consider the intersection of CHRIS & BASE II genes
+gene_symbols <- base_uniprot_gene_mapping[
+  base_uniprot_gene_mapping$Gene_Symbol %in% intersect(chris_gene_symbols, colnames(base_data)), "Gene_Symbol"]
+uniprot_ids <- base_uniprot_gene_mapping[
+  base_uniprot_gene_mapping$Gene_Symbol %in% intersect(chris_gene_symbols, colnames(base_data)), "Uniprot"]
+protein_names <- mapIds(org.Hs.eg.db, keys = gene_symbols, column = "GENENAME", keytype = "SYMBOL")
+
+# Select proteomics data of base II
+prot_data <- base_data[, gene_symbols]
+```
+
+## Analysis
+
+### Classes of hormonal contraceptives (HC)
+
+Our definition of hormonal contraceptives (HC) is restricted to ATC3 Group G03A, excluding those designated for topical use. Furthermore, we classify oral contraceptives into three distinct groups, HC containing:
+
+-   **EE**: ethinylestradiol (n participants = 87)
+
+-   **BE** : bioidentical estradiol derivative (n=2)
+
+-   **P4**: progestogen (n=2)
+
+Due to the small sample sizes for BE and P4, we refrain from conducting a detailed analysis of their effects on the BASE II plasma proteome.
+
+Overall, out of a total of n=100 women taking HC, n=91 adhere to our defined criteria for hormonal contraceptive use (HCU).
+
+```{r}
+## Groups of hormonal Contraceptives
+ee_contr <- c( 
+  "Aida", "Asumate", "Balanca", "Belara", "Bella", "Bellissima", "Chariva",
+  "Cilest", "Cyproderm", "Desmin", "Femigoa", "Femigyne", "Femikadin",
+  "Juliette", "Lamuna", "Leios", "Maxim", "Mayra", "Microgynon",
+  "Minisiston", "Miranova", "MonoStep", "Petibelle", "Pink Luna",
+  "Valette", "Velafee", "Yasmin", "Yasminelle", "Yaz"
+  )
+be_contr <- c("Zoely", "Qlaira", "Activelle")
+p4_contr <- c("Cerazette")
+# Hormonal contraceptives which are not orally administered
+non_oral_contr <- c("Depot Clinovir", "Implanon", "Mirena", "Nuvaring")
+# Hormonal Contraceptives for topical use 
+top_contr <- c("Mirena", "Nuvaring") # Hormonal Contraceptives for topical use ()
+
+
+##Add columns for HCU, HC_class, HC_topical
+base_data$HCU <- as.factor(base_data$Kontrazeptivum)
+base_data[base_data$KontrazeptivumWS %in% be_contr,"HCU_class"] <- "BE"
+base_data[base_data$KontrazeptivumWS %in% p4_contr,"HCU_class"] <- "P4"
+base_data[base_data$KontrazeptivumWS %in% ee_contr,"HCU_class"] <- "E4"
+
+base_data$HC_topical <- "No"
+base_data[base_data$KontrazeptivumWS %in% non_oral_contr, "HC_topical"] <- "Yes"
+
+# Exclude all samples from HCU that use HC for topical Use
+base_data[base_data$HC_topical == "Yes", "HCU"] <- "No"
+
+table(base_data$HCU_class)
+```
+
+### Principal Component Analysis (PCA)
+
+To investigate the global effect of HCU on the plasma proteome, we conduct a PCA of all younger study participants (age \< 40 years).
+
+```{r}
+# PCA plotting function from CompMetabTools (https://github.com/EuracBiomedicalResearch/CompMetaboTools)
+plot_pca <- function(pc, pch = 16, col = "#000000", pc_x = 1, pc_y = 2, 
+                     main = "", labels = NULL, ...) {
+    pcSummary <- summary(pc)
+    plot(pc$x[, pc_x], pc$x[, pc_y], pch = NA, main = main,
+         xlab = paste0("PC", pc_x, ": ",
+                       format(pcSummary$importance[2, pc_x] * 100, 
+                              digits = 3), " % variance"),
+         ylab = paste0("PC", pc_y, ": ",
+                       format(pcSummary$importance[2, pc_y] * 100, 
+                              digits = 3), " % variance"),
+         xaxt = "n", yaxt = "n", ...)
+    xat <- axTicks(1, usr = par("usr")[1:2])
+    labs <- gsub("-", "\U2212", print.default(xat))
+    axis(1, at = xat, labels = labs)
+    yat <- axTicks(2, usr = par("usr")[1:2])
+    labs <- gsub("-", "\U2212", print.default(yat))
+    axis(2, at = yat, labels = labs)    
+    grid()
+    if (!is.null(labels)) 
+        text(pc$x[, pc_x], pc$x[, pc_y], labels = labels, col = col, 
+             ...)
+    else points(pc$x[, pc_x], pc$x[, pc_y], pch = pch, col = col, 
+                ...)
+}
+```
+
+```{r}
+prot_data <- prot_data[rownames(base_data),]
+
+prot_data_scaled <- scale(prot_data, scale = TRUE)
+pc <- prcomp(prot_data_scaled)
+cols <- rep("#E41A1C", nrow(prot_data))
+cols[base_data$sex == "m"] <- "#377EB8"
+
+cols_hcu <- cols
+cols_hcu[(base_data$sex == "w") & (base_data$HCU == "Yes") & (base_data$HC_topical == "No")]   <- "#000000"
+```
+
+```{r, include=FALSE}
+png("../../results/plots/pca/pca_baseII_sex_hcu.png", width = 10, height = 10, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+layout(matrix(1:2), heights = c(1, 0.25))
+par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+plot_pca(pc, pch = NA, col = NA, bg = paste0(cols_hcu, 60), cex = 1.5,
+         xlim = c(-10, 15))
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.0)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols_hcu, 60),
+       cex = 1.1)
+grid()
+## Age distribution along x.
+brks <- seq(-10, to = 15, by = 1)
+f <- cut(pc$x[, 1], breaks = brks)
+ages <- split(base_data$Age_T0, f = f)
+par(mar = c(0.5, 4.3, 0.5, 0.5))
+boxplot(ages, at = brks[-1]-0.25, xaxt = "n",
+        ylab = "Age", lwd = 0.75, horizontal=F)
+grid()
+dev.off()
+```
+
+![image](../../results/plots/pca/pca_baseII_sex_hcu.png){width="614"}
+
+**Figure S152**: Principal Component Analysis of younger cohort. Individuals are coloured by sex and HCU intake (red: women; blue: men; HCU Yes: Black) Women who are taking hormonal contraception exhibit a distinct separation on Principal Component 1 from both women who are not taking hormonal contraception and men.
+
+### Oral contraceptive-associated proteins
+
+In the subsequent analysis, we replicate the association study conducted on the younger subset of participants, mirroring the methodology employed in the CHRIS study. Among the 437 participants in this group, 240 are female, with 91 of them having taken hormonal contraceptives within the last 3 months, meeting our criteria for HCU. We specifically focus on women under 40 years old and conduct an association analysis for HCU, incorporating age_10 and BMI categories as covariates. Unlike in the CHRIS analysis, we don't include fasting as a covariate due to its absence in the BASE II questionnaire. However, it's important to note that all blood samples were collected in the morning before breakfast.
+
+```{r}
+# add covariates to prot data
+covariate_cols <- data.frame(
+  age_10 = base_data$age_10,
+  bmi_cat = base_data$bmi_cat,
+  HCU = base_data$HCU
+)
+
+prot_data_hcu <- base_data[base_data$sex == "w", ]
+prot_data_hcu <- prot_data_hcu[, c(c("age_10", "bmi_cat", "HCU"),gene_symbols)]
+
+prot_data_hcu  <- within(prot_data_hcu, HCU <- relevel(HCU, ref="No"))
+
+#' Calculate the (absolute) difference in abundance expressed as a percentage
+#' based on a (log2) coefficient.
+diff_percentage <- function(x) {
+    (2^abs(x) - 1) * 100
+}
+
+## Linear model 
+FunForLinReg <- function(AnalyteName, Data) {
+    Analyte <- Data[, AnalyteName]
+    LMReg <- lm(Analyte ~ age_10 + bmi_cat + HCU,
+                data = Data)
+    res <- coef(summary(LMReg))[-1, ]
+    p.Values <- data.frame(c(res[, 1],
+                             res[, 4]))
+    names(p.Values) <- AnalyteName
+    rownames(p.Values) <- c(paste0("coef_", rownames(res)),
+                            paste0("p-value_", rownames(res)))
+    return(p.Values)
+}
+## Fit model
+LMRegtests <- do.call(
+    cbind, lapply(gene_symbols, function(x) FunForLinReg(x, prot_data_hcu)))
+Test_output <- t(LMRegtests)
+## Adjusting for multiple hypothesis testing
+adjp <- apply(Test_output[, grep("p-value", colnames(Test_output))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+Test_output <- cbind(Test_output, adjp)
+
+## perform data normalization (autoscaling)
+prot_data_AS <- prot_data_hcu
+prot_data_AS[, gene_symbols] <- scale(prot_data_AS[, gene_symbols], scale = TRUE)
+## do it in one run
+LMRegtests_AS <- do.call(cbind.data.frame,
+                         lapply(gene_symbols,
+                                function(x) FunForLinReg(x, prot_data_AS)))
+Test_output_AS <- t(LMRegtests_AS)
+EffectSize <- Test_output_AS[, grep("coef", colnames(Test_output_AS))]
+colnames(EffectSize) <- sub("coef", "effect_size", colnames(EffectSize))
+
+comps <- colnames(Test_output)[grep("coef", colnames(Test_output))]
+sign_p <- Test_output[, grep("p-adj", colnames(Test_output))] < 0.05
+colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
+
+#' Calculate the (absolute) difference in abundance expressed as a percentage
+#' based on a (log2) coefficient.
+diff_percentage <- function(x) {
+    (2^abs(x) - 1) * 100
+}
+comps <- colnames(Test_output)[grep("coef", colnames(Test_output))]
+diff_perc <- apply(Test_output[, comps],
+                   MARGIN = 2, diff_percentage)
+colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
+```
+
+```{r}
+# Add uniprot IDs
+# Add Protein Names
+results <- data.frame(
+    uniprot_ids,
+    gene_symbols,
+    protein_names,
+    Test_output,
+    EffectSize,
+    diff_perc,
+    sign_p)
+
+results$Avg_Female <- colMeans(
+    prot_data[which(prot_data$Sex == "Female"), gene_symbols])
+results$Avg_BMI1 <- colMeans(
+    prot_data[which(prot_data$BMIcat == "1"), gene_symbols])
+results$Avg_BMI2 <- colMeans(
+    prot_data[which(prot_data$BMIcat == "2"), gene_symbols])
+results$Avg_BMI3 <- colMeans(
+    prot_data[which(prot_data$BMIcat == "3"), gene_symbols])
+results$Avg_BMI4 <- colMeans(
+    prot_data[which(prot_data$BMIcat == "4"), gene_symbols])
+
+dr <- "../../results/tables"
+dir.create(dr, showWarnings = FALSE, recursive = TRUE)
+write_xlsx(
+    results, path = paste0(dr, "/Supplementary_Table_SXX.xlsx"))
+```
+
+```{r}
+chris_results_hcu <- chris_results[chris_results$Genes %in% gene_symbols, c("Uniprot","Genes", "coef_HCUYes", "p.adj_HCUYes", "effect_size_HCUYes")]
+results_hcu <- results[, c("uniprot_ids","gene_symbols", "effect_size_HCUYes", "coef_HCUYes", "p.adj_HCUYes")]
+results_hcu <- results_hcu[match(chris_results_hcu$Genes, results_hcu$gene_symbols), ]
+```
+
+```{r}
+results_hcu_plot <- results_hcu
+row.names(results_hcu_plot) <- results_hcu_plot$uniprot_ids
+results_hcu_plot$uniprot_ids <- NULL
+colnames(results_hcu_plot) <- c("Genes","effect_size", "coef", "p.adj")
+?pandoc.table
+pandoc.table(
+  results_hcu_plot[order(results_hcu_plot$p.adj),], caption ="",
+  style="rmarkdown")
+```
+
+**Table XX:** Significant proteins for hormonal contraceptive usage
+
+We compare the coefficients and effect sizes from the linear models for association for HCU of both studies.
+
+```{r, include=FALSE}
+png("../../results/plots/correlations/corr_es_coef.png", width = 10, height = 6, units = "cm",
+res = 600, pointsize = 4, type = "cairo-png")
+par(cex.axis = 2, cex.lab = 2, cex.main= 2,
+    mar=c(6,6,5,1)+.1, mfrow = c(1, 2), bty="n")
+x <- unlist(chris_results_hcu[, "effect_size_HCUYes"])
+y <- results_hcu[, "effect_size_HCUYes"]
+xl <- range(c(x, y))
+
+
+x <- unlist(chris_results_hcu[, "coef_HCUYes"])
+y <- results_hcu[, "coef_HCUYes"]
+corr_coef <- cor.test(x,y, method = "spearman")
+
+plot(x = x, y = y, xlim = xl, ylim = xl,
+     xlab = "",
+     ylab = expression(coef["BASE II"]),
+     pch = 21, col = "#00000080", bg = "#00000040",
+     xaxt = "n", yaxt = "n",
+     main = "Coefficients")
+grid()
+title(xlab=expression(coef[CHRIS]), line=3.7)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+abline(0, 1)
+rect(par("usr")[1], par("usr")[4] - 0.3, par("usr")[1] + 2, par("usr")[4], col = "white", border = "black", fill=T)
+text(
+  -0.00 * par("usr")[2], 0.935 * par("usr")[4], 
+  paste("r=", round(corr_coef$estimate, 2) ,"p=", format(as.numeric(corr_coef$p.value), scientific = TRUE, digits = 2)), pos = 2, col = "black", cex = 1.4)
+
+x <- unlist(chris_results_hcu[, "effect_size_HCUYes"])
+y <- results_hcu[, "effect_size_HCUYes"]
+corr_es <- cor.test(x,y, method = "spearman")
+# xl <- range(c(x, y))
+plot(x = x, y = y, xlim = xl, ylim = xl,
+     ylab = expression(ES["BASE II"]),
+     xlab = "",
+     pch = 21, col = "#00000080", bg = "#00000040",
+     xaxt = "n", yaxt = "n",
+     main = "Effect Sizes")
+grid()
+title(xlab=expression(ES[CHRIS]), line=3.7)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+abline(0, 1)
+rect(par("usr")[1], par("usr")[4] - 0.3, par("usr")[1] + 2 , par("usr")[4], col = "white", border = "black", fill=T)
+text(
+  -0.05 * par("usr")[2], 0.935 * par("usr")[4], 
+  paste("r=", round(corr_es$estimate, 2) ,"p=", format(as.numeric(corr_es$p.value), scientific = TRUE, digits = 2)), pos = 2, col = "black", cex = 1.4)
+dev.off()
+```
+
+![](../../results/plots/correlations/corr_es_coef.png){width="666"}
+
+**Figure XX:** Comparison of coefficients (left) and effect sizes (right) for association with hormonal contraceptives in BASE II and CHRIS. Correlation coefficients were calculated by sperman's rho.
+
+Both coefficients and effect sizes show strong correlations between both studies.\
+
+```{r, include=FALSE}
+png("../../results/plots/correlations/Figure_2X.png", width = 5, height = 6, units = "cm",
+res = 600, pointsize = 4, type = "cairo-png")
+par(cex.axis = 2, cex.lab = 2,mar=c(5,6,5,1)+.1, cex.text=1, bty="n")
+x <- unlist(chris_results_hcu[, "effect_size_HCUYes"])
+y <- results_hcu[, "effect_size_HCUYes"]
+corr_es <- cor.test(x,y, method = "spearman")
+xl <- range(c(x, y))
+plot(x = x, y = y, xlim = xl, ylim = xl,
+     # xlab = expression(ES[CHRIS]),
+     xlab="",
+     ylab = expression(ES["BASE II"]),
+     pch = 21, col = "#00000080", bg = "#00000040",
+     xaxt = "n", yaxt = "n", cex=1.5)
+title(xlab=expression(ES[CHRIS]), line=3.7)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
+grid()
+abline(0, 1)
+rect(par("usr")[1], par("usr")[4] - 0.3, par("usr")[1] + 1.75, par("usr")[4], col = "white", border = "black", fill=T)
+text(
+  -0.09 * par("usr")[2], 0.93 * par("usr")[4], cex = 1.4,
+  paste("r=", round(corr_es$estimate, 2) ,"p=", format(as.numeric(corr_es$p.value), scientific = TRUE, digits = 2)), pos = 2, col = "black")
+par(bty = "o")
+dev.off()
+```
+
+![](../../results/plots/correlations/Figure_2X.png){width="333"}
+
+**Figure 2XX:** Comparison of coefficients (left) between for association with hormonal contraceptives in BASE II and CHRIS. (Manuscript Figure)
+
+Below, you can see violin plots illustrating the expression levels of the most regulated proteins (see Table), categorized by HCU:
+
+```{r, include=FALSE}
+png("../../results/plots/violin_hcu_r/figure_2XX_SERPINA6.png", width = 5, height = 6, units = "cm",
+res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
+    bty = "n", cex.main = 2.5)
+f <- as.character(base_data$sex)
+f[base_data$HCU == "Yes"] <- "HCU"
+f[f == "m"] <- "Men"
+f[f == "w"] <- "Women"
+f <- factor(f, levels = c("HCU", "Women", "Men"))
+
+vioplot(split(prot_data$SERPINA6, f), 
+        ylab = expression(log[2]~abundance, xlab=""),
+        main = "", yaxt="n", xaxt="n")
+xat <- c(1,2,3)
+labs <- c("HCU", "Women", "Men")
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "P08185 (SERPINA6)", line = 0,
+      cex = par("cex.main"))
+par(bty = "o")
+dev.off()
+```
+
+![](../../results/plots/violin_hcu_r/figure_2XX_SERPINA6.png){width="333"}
+
+```{r, include=FALSE}
+png("../../results/plots/violin_hcu_r/figure_2XX_AGT.png", width = 5, height = 6, units = "cm",
+res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
+    bty = "n", cex.main = 2.5)
+# par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
+f <- as.character(base_data$sex)
+f[base_data$HCU == "Yes"] <- "HCU"
+f[f == "m"] <- "Men"
+f[f == "w"] <- "Women"
+f <- factor(f, levels = c("HCU", "Women", "Men"))
+vioplot(split(prot_data$AGT, f), 
+        ylab = expression(log[2]~abundance, xlab=""),
+        main = "", yaxt="n", xaxt="n")
+xat <- c(1,2,3)
+labs <- c("HCU", "Women", "Men")
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
+      cex = par("cex.main"))
+par(bty = "o")
+dev.off()
+```
+
+![](../../results/plots/violin_hcu_r/figure_2XX_AGT.png){width="333"}
+
+```{r, include=FALSE}
+png("../../results/plots/violin_hcu_r/figure_2XX_PGLYRP2.png", width = 5, height = 6, units = "cm",
+res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
+    bty = "n", cex.main = 2.5)
+# par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
+f <- as.character(base_data$sex)
+f[base_data$HCU == "Yes"] <- "HCU"
+f[f == "m"] <- "Men"
+f[f == "w"] <- "Women"
+f <- factor(f, levels = c("HCU", "Women", "Men"))
+vioplot(split(prot_data$PGLYRP2, f),
+        ylab = expression(log[2]~abundance, xlab=""),
+        main = "", yaxt="n", xaxt="n")
+xat <- c(1,2,3)
+labs <- c("HCU", "Women", "Men")
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
+grid(nx = NA, ny = NULL)
+mtext(side = 3, outer = FALSE, text = "Q96PD5 (PGLYRP2)", line = 0,
+      cex = par("cex.main"))
+par(bty = "o")
+dev.off()
+```
+
+![](../../results/plots/violin_hcu_r/figure_2XX_PGLYRP2.png){width="333"}
+
+Below Volcano plots display the coefficients and standardized effects sizes for HCU:
+
+```{r, include=FALSE}
+png("../../results/plots/volcano/Figure_2XXX_coef.png", width = 5, height = 6, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n")
+cols_vol = rep("#00000080", nrow(results_hcu))
+cols_vol[results$p.adj_HCUYes < 0.05] <- "#c31c1d"
+plot(
+  x = results$coef_HCUYes,  y= -log10(results$p.adj_HCUYes),
+  pch = NA, col = "#00000080", bg = "#00000040", 
+  xlab = expression(coefficient),
+  ylab = expression(-log[10](p[adj])),
+  )
+grid()
+points(results$coef_HCUYes, -log10(results$p.adj_HCUYes), pch = 21, col = cols_vol, bg = "#00000040",
+       cex = 1.1)
+# dev.off()
+```
+
+![](../../results/plots/volcano/Figure_2XXX_coef.png){width="333"}
+
+```{r, include=FALSE}
+png("../../results/plots/volcano/Figure_2XXX_es.png", width = 5, height = 6, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n")
+cols_vol = rep("#00000080", nrow(results))
+cols_vol[results$p.adj_HCUYes < 0.05] <- "#c31c1d"
+plot(
+  x = results$effect_size_HCUYes,  y= -log10(results$p.adj_HCUYes),
+  pch = NA, col = "#00000080", bg = "#00000040", 
+  xlab = expression(ES),
+  ylab = expression(-log[10](p[adj])),
+  )
+grid()
+points(results$effect_size_HCUYes, -log10(results$p.adj_HCUYes), pch = 21, col = cols_vol, bg = "#00000040",
+       cex = 1.1)
+
+# dev.off()
+```
+
+![](../../results/plots/volcano/Figure_2XXX_es.png){width="333"}
