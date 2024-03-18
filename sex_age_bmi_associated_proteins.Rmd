@@ -332,22 +332,22 @@ grid()
 dev.off()
 
 #' And again for the graphical abstract
-png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
-    res = 600, pointsize = 4)
-par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
-       cex = 1)
-grid()
-dev.off()
+## png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
+##     res = 600, pointsize = 4)
+## par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+## plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+##          xlim = c(-16, 9))
+## unsigned.range <- function(x)
+##         c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+## y <- pc$rotation[, 1:2]
+## scl <- max(
+##     unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+##     unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+## y <- y / scl
+## points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+##        cex = 1)
+## grid()
+## dev.off()
 ```
 
 There is an interesting separation on PC1 with a subgroup of mostly female
@@ -650,9 +650,9 @@ par(mfrow = c(1, 1), mar = c(5, 6, 5, 1) + 0.1, cex.axis = 2, cex.lab = 2,
     bty = "n", cex.main = 2.5)
 #' Supplementary Figure P01019 AGT concentration in different groups
 f <- as.character(prot_data$Sex)
-f[f == "Female"] <- "Woman"
+f[f == "Female"] <- "Women"
 f[f == "Male"] <- "Men"
-f[prot_data$HCU == "Yes"] <- "HCU"
+f[which(prot_data$HCU == "Yes")] <- "HCU"
 f <- factor(f, levels = c("HCU", "Women", "Men"))
 library(vioplot)
 vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
@@ -892,7 +892,7 @@ significant_points(results, comparison = "SexFemale")
 #' Volcano plots for sex and age associations.
 dr <- "images/manuscript/"
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
-png(paste0(dr, "_Figure_4AB.png"), width = 8.6, height = 4.1, units = "cm",
+png(paste0(dr, "_Figure_2AB.png"), width = 8.6, height = 4.1, units = "cm",
     res = 600, pointsize = 3.5)
 par(mar = c(4, 4.7, 1, 1.5), mfrow = c(1, 2), cex.axis = 2,
     cex.lab = 2, cex.main = 2.5)
@@ -915,7 +915,7 @@ cell_labels <- results[any_sig, c("significant_BMIcat1", "significant_BMIcat3",
                                   "significant_BMIcat4")]
 cell_labels <- do.call(
     cbind, lapply(cell_labels, function(z) ifelse(z, "\u2731", "")))
-pheatmap(coefs, filename = paste0(dr, "_Figure_4C.png"),
+pheatmap(coefs, filename = paste0(dr, "_Figure_2C.png"),
          width = 2.8, height = 3.8,
          breaks = seq(-0.5, 0.5, length.out = 101),
          display_numbers = cell_labels)
@@ -1696,9 +1696,9 @@ pandoc.table(
 ```{r}
 #' PAPER Figure 5A
 #' Volcano plot for hormonal contraceptive use.
-png(paste0(dr, "_Figure_5A.png"), width = 5, height = 6, units = "cm",
-    res = 600, pointsize = 4, type = "cairo-png")
-par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n")
+png(paste0("images/manuscript/_Figure_5A.png"), width = 5, height = 6,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5, bty = "n")
 cols_vol = rep("#00000080", nrow(results_hcu))
 cols_vol[results_hcu$significant_HCUYes] <- "#c31c1d"
 plot(
@@ -2294,6 +2294,8 @@ dev.off()
 
 png("images/manuscript/_Figure_6B.png", width = 5, height = 5, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 1), mar = c(4.5, 4.5, 1.5, 0.5), cex.lab = 1.5, bty = "n",
+    cex.main = 2.5, cex.axis = 1.5, cex = 1.5)
 plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
      xlab = expression(ES[EE]), ylab = expression(ES[P4]),
      xlim = xl, ylim = xl)
@@ -3276,6 +3278,11 @@ for (protein in proteins) {
 }
 ```
 
+Note on Figures for the manuscript. Plotting ggplot and base R plots into the
+same figure is not (easily) possible, and also some of the plots were created in
+Berlin hence we need to merge the figures manually. This is done with
+Gimp. Original plots are not modified. Labels (A, B, ...) are added manually
+using the *sans serif* font and using a size of 120px.
 
 # Session information
 
