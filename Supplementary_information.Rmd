@@ -178,131 +178,6 @@ cat("\\end{figure}\n")
 ```
 
 
-# Replication of results in the BASE II cohort
-
-Influence of hormonal contraceptives on the plasma proteome of female study
-participants below the age of 40 was validated using data from an independent
-cohort, the BASE II study.
-
-```{r, results = "asis"}
-tmp <- data.frame(
-    Female = c("240", "28.7 (3.1)", "", "", "22 (9.2%)",
-               "172 (71.7%)", "31 (12.9%)", "15 (6.3%)"),
-    Male = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
-             "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
-)
-rownames(tmp) <- c("n", "Age [mean (SD)]", "Classification according",
-                   "to BMI, n (%)", "1: underweight", "2: normal",
-                   "3: overweight", "4: obese")
-pandoc.table(
-    tmp, split.table = "Inf", justity = c("ccc"),
-    caption = paste0("Demographic characteristics of the BASE II study ",
-                     "participants included in the analysis."))
-
-```
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
-    "images/manuscript/supplement/pca_baseII_sex_hcu_yr.png}\n",
-    sep = "")
-cat("  \\caption{Principal component anaysis of the plasma proteome data",
-    "from the BASE II cohort. BASE II plasma proteome data was restricted to",
-    "the 131 proteins common with CHRIS and to data from participants of age",
-    "< 40. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives are colored grey.}\n")
-cat("\\end{figure}\n")
-
-```
-
-
-# Influence of different combined oral contraceptives on the plasma proteome
-
-
-```{r, results = "asis"}
-tmp <- data.frame(
-    ATC5 = c("G03AA07", "G03AA09", "G03AA10", "G03AA12", "G03AA15",
-             "G03AA16", "G03AB05", "G03AB06", "G03HB01", "G03AC09",
-             "G03AA14", "G03AB08"),
-    `ATC4 name` = c("levonorgestrel and EE",
-                    "desogestrel and EE",
-                    "gestodene and EE",
-                    "drospirenone and EE",
-                    "chlormadinone and EE",
-                    "dienogest and EE",
-                    "desogestrel and EE",
-                    "gestodene and EE",
-                    "cyproterone and estrogen",
-                    "desogestrel",
-                    "nomegestrol and estradiol",
-                    "dienogest and estradiol"),
-    COC = c("EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE",
-            "P4", "BE", "BE"),
-    count = c(31, 10, 104, 67, 2, 5, 7, 7, 15, 6, 7, 10),
-    `Preparation name` =
-        c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
-          "MERCILON, PRACTIL, PLANUM, DESOREEN",
-          "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
-          "YASMINELLE, LUCINELLE, YASMIN, LUTIZ, LUSINE, YAZ, JASMINELLE, RUBIRA, LUSINELLE",
-          "BELARA",
-          "VALETTE, SIBILLA",
-          "LUCILLE, GRACIAL",
-          "MILVANE, TRIMINULET",
-          "DIANE, VISOFID",
-          "NACREZ, CERAZETTE",
-          "ZOELY",
-          "KLAIRA, QLAIRA")
-)
-
-pandoc.table(
-    tmp, justity = c("cccrc"), split.table = Inf,
-    caption = paste0("Combined Oral Contraceptive (COC) classes. ",
-                     "EE: ethinylestradiol."))
-
-```
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=1.1\\textwidth]{",
-    "images/manuscript/supplement/Figure_COCs_beeswarm.png}\n",
-    sep = "")
-cat("  \\caption{Abundances of proteins significantly associated with hormonal",
-    "contraceptive use for different types of combined oral contraceptives.",
-    "\\textit{EE}: preparations containing ethinylestradiol, \\textit{BE}:",
-    "preparations with bioidentical estrogen, \\textit{P4}: progestogen",
-    "preparations. Shown are individual data points in grey and median",
-    "abundances per group as black horizontal lines.",
-    "Abundances are adjusted for age, (categorical) BMI and fasting status.}\n")
-cat("\\end{figure}\n")
-
-```
-
-
-
-# Previous hormonal contraceptive use
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=1.1\\textwidth]{",
-    "images/manuscript/supplement/Figure_previous_hcu.png}\n",
-    sep = "")
-cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
-    "plasma proteome. Left: results from the comparison between participants ",
-    "currently taking hormonal contraceptives and those that never took ",
-    "hormonal contraceptives. Middle: results from the comparison between ",
-    "participants that used hormonal contraceptives in the past and those ",
-    "that never took them. Proteins with significant differences in ",
-    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
-    "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
-    sep = "")
-cat("\\end{figure}\n")
-
-```
-
-
 # Sex, age and body mass index associated proteins
 
 ## Sex-associated plasma proteins
@@ -505,35 +380,7 @@ pandoc.table(
 ```
 
 
-
-
-# Plasma proteins associated with usage of hormonal contraceptives
-
-
-A comparison of the results from the analysis on the full data set and on the
-subset of female participants below 40 years of age is shown below. Coefficients
-for associations with hormonal contraceptive use are highly similar between the
-two analyses and p-values highly related (same rank, but difference in the
-values due to the differences in statistical power from the two analyses).
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
-    "images/manuscript/supplement/Figure_S151.png}\n",
-    sep = "")
-cat("  \\caption{Comparison of results for association with hormonal ",
-    "contraceptive use from the analysis of the full data set (x-axis) and ",
-    "the analysis on the subset of female participants below 40 years ",
-    "of age (y axis). Shown are -log10 of p-values, ranks of p-values and ",
-    "coefficients.}\n",
-    sep = "")
-cat("\\end{figure}\n")
-
-```
-
-
-## Sensitivity analysis
+# Sensitivity analysis
 
 To evaluate the influence of hormonal contraceptive use on results for age, sex
 and BMI associations, the analysis was repeated without adjustment for hormonal
@@ -656,7 +503,7 @@ for (i in seq_len(nrow(atc_3_names))) {
 
 # Plasma proteins associated with medication (ATC level 4)
 
-Associations were evaluated for 27 ATC level 4 medications taken on a regular
+Associations were evaluated for 34 ATC level 4 medications taken on a regular
 basis (at least twice per week) by more than 14 study participants. The
 considered medications, numbers of participants and significant proteins are
 shown in the table below.
@@ -786,12 +633,176 @@ for (i in seq_len(nrow(atc4_table))) {
 }
 ```
 
-**Table S45** (external spreadsheet, xlsx format): Comparison with results from literature.
+# Plasma proteins associated with usage of hormonal contraceptives
+
+
+A comparison of the results from the analysis on the full data set and on the
+subset of female participants below 40 years of age is shown below. Coefficients
+for associations with hormonal contraceptive use are highly similar between the
+two analyses and p-values highly related (same rank, but difference in the
+values due to the differences in statistical power from the two analyses).
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_S151.png}\n",
+    sep = "")
+cat("  \\caption{Comparison of results for association with hormonal ",
+    "contraceptive use from the analysis of the full data set (x-axis) and ",
+    "the analysis on the subset of female participants below 40 years ",
+    "of age (y axis). Shown are -log10 of p-values, ranks of p-values and ",
+    "coefficients.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+
+# Replication of results in the BASE II cohort
+
+Influence of hormonal contraceptives on the plasma proteome of female study
+participants below the age of 40 was validated using data from an independent
+cohort, the BASE II study.
+
+```{r, results = "asis"}
+tmp <- data.frame(
+    Female = c("240", "28.7 (3.1)", "", "", "22 (9.2%)",
+               "172 (71.7%)", "31 (12.9%)", "15 (6.3%)"),
+    Male = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
+             "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
+)
+rownames(tmp) <- c("n", "Age [mean (SD)]", "Classification according",
+                   "to BMI, n (%)", "1: underweight", "2: normal",
+                   "3: overweight", "4: obese")
+pandoc.table(
+    tmp, split.table = "Inf", justity = c("ccc"),
+    caption = paste0("Demographic characteristics of the BASE II study ",
+                     "participants included in the analysis."))
+
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.7\\textwidth]{",
+    "images/manuscript/supplement/pca_baseII_sex_hcu.png}\n",
+    sep = "")
+cat("  \\caption{Principal component anaysis of the plasma proteome data",
+    "from the BASE II cohort. BASE II plasma proteome data was restricted to",
+    "the 131 proteins common with CHRIS and to data from participants of age",
+    "< 40. Blue and red points indicate male and female participants",
+    "participants using hormonal contraceptives are colored grey.}\n")
+cat("\\end{figure}\n")
+
+```
+
+**Table S46** (external spreadsheet, xlsx format): full results from the
+analysis of the BASE II cohort.
+
+\setcounter{table}{46}
+
+
+# Influence of different combined oral contraceptives on the plasma proteome
+
+
+```{r, results = "asis"}
+tmp <- data.frame(
+    ATC5 = c("G03AA07", "G03AA09", "G03AA10", "G03AA12", "G03AA15",
+             "G03AA16", "G03AB05", "G03AB06", "G03HB01", "G03AC09",
+             "G03AA14", "G03AB08"),
+    `ATC4 name` = c("levonorgestrel and EE",
+                    "desogestrel and EE",
+                    "gestodene and EE",
+                    "drospirenone and EE",
+                    "chlormadinone and EE",
+                    "dienogest and EE",
+                    "desogestrel and EE",
+                    "gestodene and EE",
+                    "cyproterone and estrogen",
+                    "desogestrel",
+                    "nomegestrol and estradiol",
+                    "dienogest and estradiol"),
+    COC = c("EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE", "EE",
+            "P4", "BE", "BE"),
+    count = c(31, 10, 104, 67, 2, 5, 7, 7, 15, 6, 7, 10),
+    `Preparation name` =
+        c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
+          "MERCILON, PRACTIL, PLANUM, DESOREEN",
+          "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
+          "YASMINELLE, LUCINELLE, YASMIN, LUTIZ, LUSINE, YAZ, JASMINELLE, RUBIRA, LUSINELLE",
+          "BELARA",
+          "VALETTE, SIBILLA",
+          "LUCILLE, GRACIAL",
+          "MILVANE, TRIMINULET",
+          "DIANE, VISOFID",
+          "NACREZ, CERAZETTE",
+          "ZOELY",
+          "KLAIRA, QLAIRA")
+)
+
+pandoc.table(
+    tmp, justity = c("cccrc"), split.table = Inf,
+    caption = paste0("Combined Oral Contraceptive (COC) classes. ",
+                     "EE: preparations containing ethinylestradiol, ",
+                     "BE: preparations with bioidentical estrogen, ",
+                     "P4: progestogen preparations."))
+
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=1.1\\textwidth]{",
+    "images/manuscript/supplement/Figure_COCs_beeswarm.png}\n",
+    sep = "")
+cat("  \\caption{Abundances of proteins significantly associated with hormonal",
+    "contraceptive use for different types of combined oral contraceptives.",
+    "\\textit{EE}: preparations containing ethinylestradiol, \\textit{BE}:",
+    "preparations with bioidentical estrogen, \\textit{P4}: progestogen",
+    "preparations. Shown are individual data points in grey and median",
+    "abundances per group as black horizontal lines.",
+    "Abundances are adjusted for age, (categorical) BMI and fasting status.}\n")
+cat("\\end{figure}\n")
+
+```
+
+**Table S48** (external spreadsheet, xlsx format): Full results for the
+association analysis with different COCs.
+
+
+# Previous hormonal contraceptive use
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=1.1\\textwidth]{",
+    "images/manuscript/supplement/Figure_previous_hcu.png}\n",
+    sep = "")
+cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
+    "plasma proteome. Left: results from the comparison between participants ",
+    "currently taking hormonal contraceptives and those that never took ",
+    "hormonal contraceptives. Middle: results from the comparison between ",
+    "participants that used hormonal contraceptives in the past and those ",
+    "that never took them. Proteins with significant differences in ",
+    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
+    "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+
+
+# Discussion
+
+**Table S49** (external spreadsheet, xlsx format): Comparison with results from
+literature.
 
 
 # Extended Material and Methods
 
-\setcounter{table}{45}
+\setcounter{table}{49}
 
 ```{=latex}
 \begin{table}[h!]
