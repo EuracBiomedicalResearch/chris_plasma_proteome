@@ -3144,10 +3144,16 @@ pairs$parameter_name <- anns[pairs$label, "name"]
 pairs$hgnc_symbol <- prot_ann[pairs$Uniprot, "Genes"]
 pairs$description <- prot_ann[pairs$Uniprot, "long_description"]
 pairs$rho <- NA_real_
+pairs$p.value <- NA_real_
 for (i in seq_len(nrow(pairs))) {
-    pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
-                        labdata_info[rownames(prot_data), pairs[i, "label"]],
-                        use = "pairwise.complete.obs", method = "spearman")
+    tmp <- cor.test(prot_data[, pairs[i, "Uniprot"]],
+                    labdata_info[rownames(prot_data), pairs[i, "label"]],
+                    use = "pairwise.complete.obs", method = "spearman")
+    pairs$rho[i] <- tmp$estimate
+    pairs$p.value[i] <- tmp$p.value
+    ## pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
+    ##                     labdata_info[rownames(prot_data), pairs[i, "label"]],
+    ##                     use = "pairwise.complete.obs", method = "spearman")
 }
 pandoc.table(pairs, style = "rmarkdown", split.tables = Inf,
              caption = "Correlation with selected laboratory parameters")

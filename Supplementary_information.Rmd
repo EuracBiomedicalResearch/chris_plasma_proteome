@@ -136,9 +136,10 @@ tmp <- data.frame(
                      "P02787", "P69905"),
     `HGNC symbol` = c("SERPINC1", "ALB", "APOA1", "APOB", "APOC3",
                       "TF", "HBA1"),
-    rho = c(0.366, 0.320, 0.408, 0.787, 0.596, 0.686, 0.480))
+    rho = c(0.366, 0.320, 0.408, 0.787, 0.596, 0.686, 0.480),
+    `p-value` = c(1.23e-110, 1.57e-83, 1.26e-139, 0, 0, 0, 8.2e-200))
 pandoc.table(
-    tmp, split.table = "Inf", justity = c("cccc"),
+    tmp, split.table = "Inf", justity = c("ccccc"),
     caption = paste0("Correlation between clinical laboratory measurements",
                      " and quantified protein abundances."))
 
