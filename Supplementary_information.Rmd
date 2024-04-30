@@ -660,11 +660,11 @@ cat("\\end{figure}\n")
 ```
 
 
-# Replication of results in the BASE II cohort
+# Replication of results in the serum proteomics data of the BASE-II cohort
 
-Influence of hormonal contraceptives on the plasma proteome of female study
+Influence of hormonal contraceptives on the serum proteome of female study
 participants below the age of 40 was validated using data from an independent
-cohort, the BASE II study.
+cohort, the BASE-II study.
 
 ```{r, results = "asis"}
 tmp <- data.frame(
@@ -673,12 +673,12 @@ tmp <- data.frame(
     Men = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
             "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
 )
-rownames(tmp) <- c("n", "Age [mean (SD)]", "Classification according",
+rownames(tmp) <- c("n", "Age, mean (SD)", "Classification according",
                    "to BMI, n (%)", "1: underweight", "2: normal",
                    "3: overweight", "4: obese")
 pandoc.table(
     tmp, split.table = "Inf", justity = c("ccc"),
-    caption = paste0("Demographic characteristics of the BASE II study ",
+    caption = paste0("Demographic characteristics of the BASE-II study ",
                      "participants included in the analysis."))
 
 ```
@@ -689,8 +689,8 @@ cat("\\centering\n")
 cat("  \\includegraphics[width=0.7\\textwidth]{",
     "images/manuscript/supplement/pca_baseII_sex_hcu.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the plasma proteome data",
-    "from the BASE II cohort. BASE II plasma proteome data was restricted to",
+cat("  \\caption{Principal component anaysis of the serum proteome data",
+    "from the BASE-II cohort. BASE-II serum proteome data was restricted to",
     "the 131 proteins common with CHRIS and to data from participants of age",
     "< 40. Blue and red points indicate male and female participants",
     "participants using hormonal contraceptives are colored grey.}\n")
@@ -699,12 +699,12 @@ cat("\\end{figure}\n")
 ```
 
 **Table S46** (external spreadsheet, xlsx format): Full results from the
-analysis of the BASE II cohort.
+analysis of the BASE-II cohort.
 
 \setcounter{table}{46}
 
 
-# Influence of different combined oral contraceptives on the plasma proteome
+# Influence of different combined oral contraceptives on the CHRIS plasma proteome
 
 
 ```{r, results = "asis"}
@@ -758,7 +758,8 @@ cat("  \\includegraphics[width=1.1\\textwidth]{",
     "images/manuscript/supplement/Figure_COCs_beeswarm.png}\n",
     sep = "")
 cat("  \\caption{Abundances of proteins significantly associated with hormonal",
-    "contraceptive use for different types of combined oral contraceptives.",
+    "contraceptive use for different types of combined oral contraceptives in ",
+    "the CHRIS study.",
     "\\textit{EE}: preparations containing ethinylestradiol, \\textit{BE}:",
     "preparations with bioidentical estrogen, \\textit{P4}: progestogen",
     "preparations. Shown are individual data points in grey and median",
@@ -781,7 +782,8 @@ cat("  \\includegraphics[width=1.1\\textwidth]{",
     "images/manuscript/supplement/Figure_previous_hcu.png}\n",
     sep = "")
 cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
-    "plasma proteome. Left: results from the comparison between participants ",
+    "plasma proteome in the CHRIS study.",
+    " Left: results from the comparison between participants ",
     "currently taking hormonal contraceptives and those that never took ",
     "hormonal contraceptives. Middle: results from the comparison between ",
     "participants that used hormonal contraceptives in the past and those ",
