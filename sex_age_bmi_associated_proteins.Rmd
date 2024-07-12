@@ -44,18 +44,23 @@ chris_path <- "."
 
 # Introduction
 
-This document provides a general description of the CHRIS ScanningSWATH mass
-spectrometry (MS)-based plasma proteome data set and describes the analysis to
-identify plasma proteins that are associated to age, sex and body mass index
-(BMI). The analysis is performed similarly to the analysis for the
-identification of age, sex and BMI-associated metabolites
-[@verri_hernandes_age_2022]. In addition, influence of medication on the
-quantified plasma proteome is evaluated.
+This document provides a general description of the ScanningSWATH mass
+spectrometry (MS)-based plasma proteome data set of the CHRIS population study
+[@Pattaro:2015fu] and describes the analysis to identify plasma proteins that
+are associated to age, sex and body mass index (BMI). The analysis is performed
+similarly to the analysis for the identification of age, sex and BMI-associated
+metabolites [@verri_hernandes_age_2022] but in addition, influence of (frequent)
+medication on the quantified plasma proteome is evaluated.
+
+The document and repository does not provide any data. Access to any individual
+level data, including the mass spectrometry data, needs to be requested through
+the CHRIS Access Committee.
 
 # Data import
 
 Below we load the data and all required libraries. The data is loaded from the
-CHRIS TDFF modules. Most used packages are available either on
+CHRIS *TDFF* modules (i.e. the data file format in which CHRIS study data is
+internally stored). Most used packages are available either on
 [CRAN](https://cran.r-project.org/) or [Bioconductor](https://bioconductor.org)
 and can be installed using the `BiocManager::install` function. Exceptions are
 the following packages that can be installed from github:
@@ -91,24 +96,29 @@ library(writexl)
 library(tidyfr)
 library(MatchIt)
 library(pROC)
+
+#' Load the CHRIS plasma proteomics data module
 mdl <- data_module("chris_scanningswath_proteins", "1.0.0.1", chris_path)
 prot_data <- data(mdl)
 prot_ann <- labels(mdl)
 stopifnot(all(colnames(prot_data) == rownames(prot_ann)))
 colnames(prot_data) <- prot_ann$description
 rownames(prot_ann) <- prot_ann$description
-## define the columns with protein concentrations
+#' define the columns with protein concentrations
 proteins <- rownames(prot_ann)[prot_ann$Genes != ""]
+
 ```
 
 Before proceeding with the data analysis we remove the POOL samples. In addition
-we restrict to samples from the CHRIS study.
+we restrict to samples from the CHRIS study (i.e., remove the samples from the
+NAFLD sub-study).
 
 ```{r remove-POOLs-NAFLDs, message = FALSE, warning = FALSE}
 prot_data <- prot_data[grep("^001", rownames(prot_data)), ]
 ```
 
-Next we define the various variables which will be included in the analysis.
+Next we define the various variables which will be included in the analysis. The
+related trait information is extracted from the `chrisData` R package.
 First we define and add the BMI data, both as a numeric value, but also using
 the BMI categories. For the BMI categories we are using *2* (18.5 - <25) as
 baseline since that is supposed to be the *normal*.
@@ -116,7 +126,7 @@ baseline since that is supposed to be the *normal*.
 ```{r define-variables-bmi, message = FALSE, warning = FALSE}
 clin <- chrisData("clinical")
 rownames(clin) <- clin$AID
-## Adding this information to the colData
+#' Adding this information to the colData
 prot_data$BMI <- clin[rownames(prot_data), "x0an03q"]
 prot_data$BMIcat <- factor(as.integer(clin[rownames(prot_data), "x0an03b"]),
                            levels = c("2", "1", "3", "4"))
@@ -126,10 +136,9 @@ We also define the season in which samples were collected from the study
 participants and add the age and sex information for each study participant.
 
 ```{r define-variables-general-info, message = FALSE}
-## add here phenotype data from chrisData and recalculate season from exam day
+#' add here phenotype data from chrisData and recalculate season from exam day
 gen_info <- chrisData("general_information", release = "baseline")
 rownames(gen_info) <- gen_info$AID
-prot_data$Season <- as.factor(season(gen_info[rownames(prot_data), "x0_examd"]))
 prot_data$Sex <- gen_info[rownames(prot_data), "x0_sex"]
 prot_data$Age <- gen_info[rownames(prot_data), "x0_age"]
 ```
@@ -139,7 +148,7 @@ Import information for pregnancy:
 ```{r define-variables-pregnant, message = FALSE}
 interview_info <- chrisData("interview", release = "baseline")
 rownames(interview_info) <- interview_info$AID
-## Add pregnancy information
+#' Add pregnancy information
 prot_data$Pregnant <- interview_info[rownames(prot_data), "x0wo05"]
 ```
 
@@ -147,8 +156,8 @@ A categorical variable for fasting status is defined based self-reported data
 from the participants' interview.
 
 ```{r define-variables-fasting, message = FALSE}
-## add number of people reporting fasting status (`x0bc12` from `chrisData`
-## `"labdata"`)
+#' add number of people reporting fasting status (`x0bc12` from `chrisData`
+#' `"labdata"`)
 labdata_info <- chrisData("labdata", release = "baseline")
 rownames(labdata_info) <- labdata_info$AID
 prot_data$Fasting <- labdata_info[rownames(prot_data), "x0bc12"]
@@ -158,6 +167,7 @@ At last we load also the medication data which might be used later to test for
 potential confounding.
 
 ```{r}
+#' Load medication data
 medi <- chrisData("drugs_1")
 library(atc)
 ```
@@ -179,7 +189,7 @@ general overview of the trait is summarized below:
 
 ```{r, message=FALSE}
 Overview <- summary(
-    prot_data[, c("Sex", "Fasting", "Age", "Age_10", "Season", "BMIcat",
+    prot_data[, c("Sex", "Fasting", "Age", "Age_10", "BMIcat",
                   "Pregnant", "Fasting")])
 print(Overview)
 ```
@@ -199,17 +209,17 @@ prot_data <- prot_data[-rem, ]
 Summary for the final data set.
 
 ```{r}
-prot_data[, c("Sex", "Fasting", "Age", "Age_10", "Season", "BMIcat",
+prot_data[, c("Sex", "Fasting", "Age", "Age_10", "BMIcat",
               "Pregnant", "Fasting")] %>% summary()
 ```
-
 
 This reduces the data set to `r nrow(prot_data)` individuals.
 
 We next evaluate the variance of protein abundances observed in the present data
-set.
+set (study samples).
 
 ```{r}
+#' Calculate CV for proteins across study samples
 cv_study <- vapply(prot_data[proteins], function(z) {
     z <- 2^z
     (sd(z, na.rm = TRUE) / mean(z, na.rm = TRUE)) * 100
@@ -217,7 +227,8 @@ cv_study <- vapply(prot_data[proteins], function(z) {
 cv_rel <- cv_study / (prot_ann[proteins, "cv_qc_chris"] * 100)
 ```
 
-Top 30 proteins with highest absolute CV in study samples.
+Top 30 proteins with highest absolute CV in study samples are listed in the
+table below.
 
 ```{r, results = "asis"}
 tab <- data.frame(
@@ -231,7 +242,7 @@ pandoc.table(tab_sub, caption = "Top 30 proteins with largest CV.",
              style = "rmarkdown", split.table = Inf)
 ```
 
-Proteins with the lowest absolute CV.
+In contrast, the proteins with the lowest absolute CV:
 
 ```{r, results = "asis"}
 tab_sub <- tab[order(tab$cv_study), ][1:30, ]
@@ -257,11 +268,11 @@ pandoc.table(tab_sub, caption = "Top 30 proteins with smallest relative CV.",
 
 ```
 
-In next figure, scores and loadings from the PCA are presented considering all
-available `r length(proteins)` proteins. Samples are coloured according to
-their sex. Prior the PCA, data is normalized to 0 mean and standard deviation of
-1 (autoscaling). Plot shows the scores and loadings of all subjects in the
-space of the first two PCs, with 15% of total variances explained.
+We next perform a principal component analysis to group participants based on
+their plasma proteome. Samples are colored according to their sex. Prior the
+PCA, data is normalized to 0 mean and standard deviation of 1 (autoscaling). The
+plot below shows the scores and loadings of all subjects in the space of the
+first two PCs, with 15% of total variances explained.
 
 ```{r PCA_1_figure, fig.path = IMAGE_PATH, fig.width=12, fig.height=7}
 ## include age in PCA
@@ -282,8 +293,8 @@ ggplotly_or_not(gg_1, PLOTLY)
 ```
 
 ```{r}
-## FIGURE 1
-## Transparency for protein names depending on arrow length?
+#' FIGURE 1
+#' Transparency for protein names depending on arrow length?
 png("images/manuscript/Figure_1.png", width = 10, height = 10, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
 pc <- prcomp(scaledData)
@@ -305,7 +316,7 @@ arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
        lwd = 0.75, angle = 30, length = 0.05,
        col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
      col = "#00000080", cex = 1.4)
 points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
@@ -320,57 +331,41 @@ boxplot(ages, at = brks[-1] - 0.5, xlim = c(-16, 9), xaxt = "n",
 grid()
 dev.off()
 
-## And again for the graphical abstract
-png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
-    res = 600, pointsize = 4)
-par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
-       cex = 1)
-grid()
-dev.off()
+#' And again for the graphical abstract
+## png("images/manuscript/Figure_2_GA.png", width = 5, height = 5, units = "cm",
+##     res = 600, pointsize = 4)
+## par(mfrow = c(1, 1), mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
+## plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+##          xlim = c(-16, 9))
+## unsigned.range <- function(x)
+##         c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+## y <- pc$rotation[, 1:2]
+## scl <- max(
+##     unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+##     unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+## y <- y / scl
+## points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+##        cex = 1)
+## grid()
+## dev.off()
 ```
-
 
 There is an interesting separation on PC1 with a subgroup of mostly female
 participants which seems also to be related to Age (not shown).
 
-If we rotate the figure, it would be clear that separation between males and
-females is more clear if we consider PC1 and PC3:
-
-```{r PCA_2_figure, fig.path = IMAGE_PATH, fig.width=12, fig.height=7}
-## include age in PCA
-gg_2 <- autoplot(prcomp(scaledData), x = 1, y = 3,
-                 data = prot_data, loadings = TRUE, loadings.colour = 'gray',
-                 loadings.label = TRUE, loadings.label.size = 3,
-                 loadings.label.colour = "darkblue") +
-    geom_point(aes(colour = Sex), size = 1) +
-    theme_bw ()
-ggplotly_or_not(gg_2, PLOTLY)
-```
-
 From the scores, there is a clear effect of sex in direction of PC1. From the
 loadings we can observe relationships between proteins. Every arrow corresponds
 to the one parameter (protein) in data set. Longest arrows in the direction of
-particular Principal Component have largest impact and importance for that PC.
-The same direction of groups of arrows and their lengths indicates correlation
-of corresponding parameters in the data set and opposite: opposite directed
-arrows indicate negative correlation between corresponding parameters. For the
-cases when angles between arrows are around 90°, indicates that there is no
-correlation between corresponding parameters.
-Note that with the large numbers of parameters in PCA, some loadings can be
-placed close to each other even if there is no strong correlation. Thus,
-attention is necessary.
+particular Principal Component have the largest impact and importance for that
+PC.  The same direction of groups of arrows and their lengths indicates
+correlation of corresponding parameters in the data set and opposite: opposite
+directed arrows indicate negative correlation between corresponding
+parameters. For the cases when angles between arrows are around 90°, indicates
+that there is no correlation between corresponding parameters.  Note that with
+the large numbers of parameters in PCA, some loadings can be placed close to
+each other even if there is no strong correlation. Thus, attention is necessary.
 
-The protein P01019 (AGT, Angiotensinogen) seems to be one driver for the
+The protein P01019 (AGT, angiotensinogen) seems to be one driver for the
 separation of a set of (younger) female participants from the bulk of male and
 female participants. Since this protein was shown in the exploratory analysis to
 be eventually dependent on medication with sexual hormones we highlight
@@ -386,18 +381,21 @@ definition, because they don't have the same route of administration
 (i.e. orally and metabolized in/through the liver).
 
 ```{r, warning = FALSE}
-## Prepare medication data
+#' Prepare medication data
 med <- chrisData("drugs_1")
 med <- med[med$AID %in% rownames(prot_data), ]
 med <- med[!is.na(med$x0dd03), ]
 med$atc_2 <- toAtcLevel(med$x0dd03, level = 2)
 med$atc_3 <- toAtcLevel(med$x0dd03, level = 3)
 med$atc_4 <- toAtcLevel(med$x0dd03, level = 4)
+med$atc_5 <- toAtcLevel(med$x0dd03, level = 5)
+
 atc_df <- as.data.frame(atc)
 med$atc_2_name <- atc_df[match(med$atc_2, atc_df$key), "name"]
 med$atc_3_name <- atc_df[match(med$atc_3, atc_df$key), "name"]
 med$atc_4_name <- atc_df[match(med$atc_4, atc_df$key), "name"]
-## Subset to selected sex hormone treatment (WHO definition)
+med$atc_5_name <- atc_df[match(med$atc_5, atc_df$key), "name"]
+#' Subset to selected sex hormone treatment (WHO definition)
 med_sex_horm <- med[med$atc_3_name %in%
                     c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
                       "ANTIANDROGENS"), ]
@@ -407,7 +405,6 @@ prot_data$HCU <- factor(prot_data$HCU,
                         levels = c("No", "Yes"))
 summary(prot_data$HCU)
 ```
-
 
 ```{r PCA_HCU, warning = FALSE, fig.width = 12, fig.height = 7}
 gg_2 <- autoplot(prcomp(scaledData), x = 1, y = 2,
@@ -420,12 +417,10 @@ ggplotly_or_not(gg_2, PLOTLY)
 ```
 
 ```{r, echo = FALSE}
-## Supplementary Figure PCA
-## Same plot but with coloring representing HCU.
+#' Supplementary Figure PCA
+#' Same plot but with coloring representing HCU.
 png("images/manuscript/supplement/Figure_S149.png", width = 8.2, height = 6.4,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
-cols <- rep("#999999", nrow(prot_data))
-cols[prot_data$HCU == "Yes"] <- "#FF7F00"
 par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
 plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
          xlim = c(-16, 9))
@@ -440,8 +435,12 @@ arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
        lwd = 0.75, angle = 30, length = 0.05,
        col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
      col = "#00000080", cex = 1.4)
+
+cols <- rep("#E41A1C", nrow(prot_data))
+cols[prot_data$Sex == "Male"] <- "#377EB8"
+cols[prot_data$HCU == "Yes"] <- "#000000"
 points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
 grid()
@@ -450,12 +449,13 @@ dev.off()
 ```
 
 Most of the participants separating from the main group take indeed systemic
-contraceptives. For participants in that group that are not assigned to that
-trait is is likely that they did not bring the medication (contraceptives) with
-them to the study center and thus no ATC code was scanned.
+contraceptives. Other (female) participants in that group either take other
+types of hormonal contraceptives, or did not bring the medication with them to
+the study center and thus the medication was not recorded for them (false
+negatives).
 
-In next box-blot, age distribution per sex is visualized. Points are colored
-according the "HCU" variable:
+Below we evaluate the age distribution of participants by sex. Individuals are
+colored according to the *HCU* variable.
 
 ```{r, BP_age_figure, fig.path = IMAGE_PATH, fig.width=10, fig.height=6, warning = FALSE}
 prot_plot <- function(data, aes, protein) {
@@ -482,128 +482,77 @@ ggplotly_or_not(age_2, PLOTLY)
 ```
 
 Clearly there is an enrichment of young women among participants using hormonal
-contraceptives.
+contraceptives. We next extract the information on the individual hormonal
+contraceptive preparations to then (later) classify and categorize them based on
+the type of hormones they contain.
 
-```{r, eval = FALSE}
+```{r, results = "asis"}
 contr <- med[med$atc_3_name %in% c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
                                    "CONTRACEPTIVES FOR TOPICAL USE",
                                    "ANTIANDROGENS"), ]
-table(contr$atc_3)
+tmp <- split(contr, f = contr$atc_5)
+contr_atc5 <- lapply(tmp, function(z) {
+    a <- unique(z[, c("atc_3", "atc_4", "atc_5", "atc_4_name", "atc_5_name")])
+    a$count <- nrow(z)
+    a$preparation <- paste0(unique(z$x0dd07), collapse = ";")
+    a
+})
+contr_atc5 <- do.call(rbind, contr_atc5)
 
-G03H <- contr[contr$atc_3 == "G03H", ]
-G02B <- contr[contr$atc_3 == "G02B", ]
-G03A <- contr[contr$atc_3 == "G03A", ]
+#' to manually go through preparations to classify.
+write_xlsx(contr_atc5, path = "contraceptives.xlsx")
 
-table(G03H$atc_4_name)
-table(G02B$atc_4_name)
-table(G03A$atc_4_name)
-
-png("contraceptives_coloring.png", width = 10, height = 10, units = "cm",
-    res = 600, pointsize = 4)
-cols <- rep("#99999920", nrow(prot_data))
-cols[rownames(prot_data) %in% G03H$AID] <- "#FF0000FF"
-cols[rownames(prot_data) %in% G02B$AID] <- "#00FF00FF"
-cols[rownames(prot_data) %in% G03A$AID] <- "#0000FFFF"
-par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-arrows(x0 = 0, x1 = y[, 1],
-       y0 = 0, y1 = y[, 2],
-       lwd = 0.75, angle = 30, length = 0.05,
-       col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
-     col = "#00000080", cex = 1.4)
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
-       cex = 1.5)
-grid()
-dev.off()
-## Summary: green ones (G02B topical use) seem split half/half.
-
-
-png("contraceptives_topical_coloring.png", width = 10, height = 10,
-    units = "cm", res = 600, pointsize = 4)
-cols <- rep("#99999920", nrow(prot_data))
-cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BA", "AID"]] <- "#FF0000FF"
-cols[rownames(prot_data) %in% G02B[G02B$atc_4 == "G02BB", "AID"]] <- "#0000FFFF"
-par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = cols, cex = 1.5,
-         xlim = c(-16, 9))
-unsigned.range <- function(x)
-        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
-scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
-y <- y / scl
-arrows(x0 = 0, x1 = y[, 1],
-       y0 = 0, y1 = y[, 2],
-       lwd = 0.75, angle = 30, length = 0.05,
-       col = "#00000050")
-text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
-     col = "#00000080", cex = 1.4)
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = cols,
-       cex = 1.5)
-grid()
-dev.off()
-
-## Now, that's fun: blue (G02BB, intravaginal) behave like oral contraceptives,
-## red (G02A, intrauterine) like "normal". Thats expected, since the
-## intrauterine contraceptives are expected to act mostly locally, while the
-## intravaginal mostly systemic (while by-passing the liver).
-
+pandoc.table(
+    contr_atc5[, c("atc_4_name", "atc_5_name", "count")], style = "rmarkdown",
+    caption = "Types of hormonal contraceptives taken by participants.")
 ```
 
-Additionally, we evaluated the predictive ability of all plasma proteins for
+The table above was exported and manually evaluated/classified.
+
+Additionally, we evaluate the predictive ability of all plasma proteins for
 hormonal contraceptive use. To ensure comparability, we match the users of
 hormonal contraceptives to a control group of identical size (n = 275).  Only
-non-pregnant women under 40 years not taking hormonal contraceptives were
+non-pregnant women below the age of 40 not taking hormonal contraceptives were
 considered for the control group.
 
 ```{r}
-## Prepare Data for matching
-## Filter for  HCU users and controls
-filter_hcu <- prot_data$Age <= 40 & prot_data$HCU == "Yes" &
+#' Prepare Data for matching
+#' Filter for  HCU users and controls
+filter_hcu <- prot_data$Age < 40 & prot_data$HCU == "Yes" &
     prot_data$Pregnant == "No"
-filter_control <- prot_data$Age <= 40 & prot_data$HCU == "No" &
+filter_control <- prot_data$Age < 40 & prot_data$HCU == "No" &
     prot_data$Pregnant == "No"
 
 women_hcu <- na.omit(prot_data[filter_hcu, ])
 women_control <- na.omit(prot_data[filter_control, ]) # n = 454 possible control candidates
 
-## combine HC users and control group within dataframe
+#' combine HC users and control group within dataframe
 women_hcu_control <- rbind(women_hcu, women_control)
 
-## drop unnecessary columns
+#' drop unnecessary columns
 drop_col <- c("File.Name", "Date", "Inst", "Inj", "Plate", "Sample.Name",
-              "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat", "Season",
+              "Sex", "container", "MS_Batch", "SP_Batch", "BMIcat",
               "Pregnant", "Age_10")
 women_hcu_control <- women_hcu_control[, !(colnames(women_hcu_control) %in%
                                            drop_col)]
 
-## Adjust covariates for matching
+#' Adjust covariates for matching
 women_hcu_control$Fasting <- as.factor(women_hcu_control$Fasting)
 women_hcu_control$HCU <- as.factor(women_hcu_control$HCU)
 ```
 
-"Optimal" matching via a generalized linear model (GLM) was used for propensity
+*Optimal* matching via a generalized linear model (GLM) was used for propensity
 score calculation (including age, BMI and fasting status as covariates)
 as implemented in the R package (MatchIt).
 
 ```{r}
-## Matching
+#' Matching
 match.out <- matchit(
     HCU ~ Age + Fasting + BMI,
     data = women_hcu_control[,c("HCU", "Fasting", "BMI", "Age")],
     method = "optimal", distance = "glm")
 
-## Select matched participants
+#' Select matched participants
 hcu_control_matched <- rbind(women_control[match.out$match.matrix, ],
                              women_hcu)
 
@@ -628,11 +577,11 @@ Predictive performance of proteins for HCU is evaluated by calculating Area
 Under the Receiver Operating Characteristic curve (AUROC).
 
 ```{r}
-## Select only plasma protein and HCU status
+#' Select only plasma protein and HCU status
 hcu_control_matched <- hcu_control_matched[, c(proteins, "HCU")]
 labels <- hcu_control_matched$HCU
 
-## calculate ROC
+#' calculate ROC
 calculate_roc <- function(col_name) {
   if (!(col_name == "HCU")) {
     protein_values <- hcu_control_matched[[col_name]]
@@ -643,14 +592,14 @@ calculate_roc <- function(col_name) {
 
 roc_list <- lapply(colnames(hcu_control_matched), calculate_roc)
 
-## Convert List to dataframe
+#' Convert List to dataframe
 roc_df <- do.call(rbind, lapply(roc_list, as.data.frame))
 
-## add Genes and UniProtIDs to dataframe
+#' add Genes and UniProtIDs to dataframe
 roc_df$Genes <- prot_ann[proteins, "Genes"]
 roc_df$UniProtId <- prot_ann[proteins, "description"]
 
-## Save the ROC data to a CSV file
+#' Save the ROC data to a CSV file
 #write.csv(roc_df, "rocValsHCU.csv", row.names = FALSE)
 ```
 
@@ -658,7 +607,7 @@ Angiotensinogen (AGT) shows high predictive power for hormonal contraceptive
 usage (AUROC = 0.89)
 
 ```{r,}
-# Calculate ROC seperately for AGT
+#' Calculate ROC seperately for AGT
 roc_data_agt <- roc(hcu_control_matched$HCU, hcu_control_matched$P01019)
 
 roc_df <- data.frame(
@@ -671,7 +620,7 @@ roc_df <- data.frame(
 ```{r}
 par(mfrow = c(1, 2), mar = c(4, 4.5, 5, 1), cex.axis = 1.5, cex.lab = 1.5,
     bty = "n", cex.main = 2.5)
-## Supplementary Figure P01019 AGT concentration in different groups
+#' Supplementary Figure P01019 AGT concentration in different groups
 f <- as.character(prot_data$Sex)
 f[prot_data$HCU == "Yes"] <- "HCU"
 f <- factor(f, levels = c("HCU", "Female", "Male"))
@@ -682,7 +631,7 @@ grid(nx = NA, ny = NULL)
 mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
       cex = par("cex.main"))
 mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
-## ROC
+#' ROC
 plot(roc_df$OneMinusSpecificity, roc_df$Sensitivity, xlab = "1 - Specificity",
      ylab = "Sensitivity", type = "l", lwd = 2)
 abline(0, 1, lty = 3, col = "grey")
@@ -693,33 +642,49 @@ mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
 ```
 
 ```{r}
-## Figure 2.
-png("images/manuscript/Figure_2.png", width = 10,
-    height = 5, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
-par(mfrow = c(1, 2), mar = c(4, 4.5, 5, 1), cex.axis = 1.5, cex.lab = 1.5,
+#' PAPER, Figure 5B
+#' AGT abundance in HCU, women and men.
+png("images/manuscript/_Figure_5B.png", width = 5,
+    height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 1), mar = c(5, 6, 5, 1) + 0.1, cex.axis = 2, cex.lab = 2,
     bty = "n", cex.main = 2.5)
-## Supplementary Figure P01019 AGT concentration in different groups
+#' Supplementary Figure P01019 AGT concentration in different groups
 f <- as.character(prot_data$Sex)
-f[prot_data$HCU == "Yes"] <- "HCU"
-f <- factor(f, levels = c("HCU", "Female", "Male"))
+f[f == "Female"] <- "Women"
+f[f == "Male"] <- "Men"
+f[which(prot_data$HCU == "Yes")] <- "HCU"
+f <- factor(f, levels = c("HCU", "Women", "Men"))
 library(vioplot)
 vioplot(split(prot_data$P01019, f), ylab = expression(log[2]~abundance),
-        main = "")
+        main = "", yaxt = "n", xaxt = "n")
 grid(nx = NA, ny = NULL)
+xat <- c(1,2,3)
+labs <- c("HCU", "Women", "Men")
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
 mtext(side = 3, outer = FALSE, text = "P01019 (AGT)", line = 0,
       cex = par("cex.main"))
-mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
-## ROC
+## mtext(side = 3, outer = FALSE, text = "A", cex = 5, at = 0.1, line = 0.5)
+dev.off()
+
+#' PAPER, Figure 5C
+#' ROC for AGT
+png("images/manuscript/_Figure_5C.png", width = 5,
+    height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 1), mar = c(5, 6, 5, 1) + 0.1, cex.axis = 2, cex.lab = 2,
+    bty = "n", cex.main = 2.5)
+#' ROC
 plot(roc_df$OneMinusSpecificity, roc_df$Sensitivity, xlab = "1 - Specificity",
      ylab = "Sensitivity", type = "l", lwd = 2)
 abline(0, 1, lty = 3, col = "grey")
 grid()
 legend("bottomright", legend = "AUC AGT = 0.89", cex = 2, bty = "n")
-mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
+## mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
 dev.off()
 
 ```
-
 
 
 # Sex, Age, BMI and oral hormonal contraceptive-associated proteins
@@ -728,18 +693,18 @@ To identify proteins related with sex, age, fasting status and BMI, linear
 regression models are fitted for all proteins separately (as a response) and
 sex, age, fasting status and (categorical) BMI as a covariates (same as in
 [@verri_hernandes_age_2022]). In addition, and based on the observations from
-the previous section, a categorical variable representing use of hormonal
-contraceptives is included to adjust for the influence of this factor. In this
-model, no interactions between variables are considered, although a relationship
-between BMI and sex seems to be present in the present data set. A sensitivity
-analysis evaluating the impact of considering in addition an interaction between
-BMI and sex is performed in one of the following sections.
+the previous section, a categorical variable representing the use of hormonal
+contraceptives is included to adjust for the influence of this medication. In
+this model, no interactions between variables are considered, although a
+relationship between BMI and sex seems to be present in the data. A sensitivity
+analysis evaluating the impact of the additional interaction between BMI and sex
+was performed but did not show large differences (data not shown).
 
 Raw p-values for each coefficient are adjusted for multiple hypothesis testing
 with the method from Bonferroni.
 
 ```{r, message=FALSE}
-## Linear model LM1
+#' Linear model LM1
 FunForLinReg <- function(AnalyteName, Data) {
     Analyte <- Data[, AnalyteName]
     LMReg <- lm(Analyte ~ Sex + Age_10 + Fasting + BMIcat + HCU,
@@ -752,11 +717,10 @@ FunForLinReg <- function(AnalyteName, Data) {
                             paste0("p-value_", rownames(res)))
     return(p.Values)
 }
-## do it in one run
 LMRegtests <- do.call(
     cbind, lapply(proteins, function(x) FunForLinReg(x, prot_data)))
 Test_output <- t(LMRegtests)
-## Adjusting for multiple hypothesis testing
+#' Adjusting for multiple hypothesis testing
 adjp <- apply(Test_output[, grep("p-value", colnames(Test_output))],
               MARGIN = 2, p.adjust, method = "bonferroni")
 colnames(adjp) <- sub("value", "adj", colnames(adjp))
@@ -767,14 +731,13 @@ To obtain comparable coefficients, prior to linear modelling all the variables
 are standardized to zero mean and unit variance (note that this does not
 influence the linear models since they are affine equivariant).
 In autoscaled data, difference of 1 corresponds to standard deviation of 1.
-This parameter will be called "effect size" and will be use to evaluate group
+This parameter will be called *effect size* and will be use to evaluate group
 differences.
 
 ```{r, message = FALSE}
-## perform data normalization (autoscaling)
+#' perform data normalization (autoscaling)
 prot_data_AS <- prot_data
 prot_data_AS[, proteins] <- scale(prot_data_AS[, proteins], scale = TRUE)
-## do it in one run
 LMRegtests_AS <- do.call(cbind.data.frame,
                          lapply(proteins,
                                 function(x) FunForLinReg(x, prot_data_AS)))
@@ -783,18 +746,18 @@ EffectSize <- Test_output_AS[, grep("coef", colnames(Test_output_AS))]
 colnames(EffectSize) <- sub("coef", "effect_size", colnames(EffectSize))
 ```
 
-We next define criteria to call proteins *significant*. Due the size of the data
-set proteins would be called significant, even if their difference in
-concentrations is only very small. Hence we evaluate whether we could combine
-the criteria for *statistical significance* (the p-value) with another criteria
-that would allow us to define the proteins that are the *strongest* associated
-with the contrast of interest.
+We next define the criteria to call proteins *significant*. Due the size of the
+data set (and hence the statistical power) proteins would be called significant,
+even if their difference in concentrations is only very small. Hence we evaluate
+whether we could combine the criteria for *statistical significance* (the
+p-value) with another criteria that would allow us to define the proteins that
+are the *strongest* associated with the contrast of interest.
 
 ```{r significant-effect-size}
 comps <- colnames(Test_output)[grep("coef", colnames(Test_output))]
 sign_p <- Test_output[, grep("p-adj", colnames(Test_output))] < 0.05
 colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
-## Define significant analytes based on effect size.
+#' Define significant analytes based on effect size.
 cut_effect_size <- 0.5
 sign_es <- sign_p &
     abs(EffectSize) > cut_effect_size
@@ -850,8 +813,8 @@ pandoc.table(
 ```
 
 ```{r export-results, warning = FALSE}
-## Loading also the information whether an analyte was already identified
-## before to be significant.
+#' Loading also the information whether an analyte was already identified
+#' before to be significant.
 results <- data.frame(
     prot_ann[proteins, c("description", "long_description", "PeptideNN",
                          "PeptideNames", "Protein.Ids", "Protein.Names",
@@ -864,7 +827,7 @@ results <- data.frame(
 results$cv_qc_chris <- 100 * results$cv_qc_chris
 results$cv_study <- cv_study
 results$relative_cv <- cv_rel
-## Add average concentrations for most important groups.
+#' Add average concentrations for most important groups.
 results$Avg_Male <- colMeans(
     prot_data[which(prot_data$Sex == "Male"), proteins])
 results$Avg_Female <- colMeans(
@@ -889,8 +852,8 @@ write_xlsx(
 
 ## Sex-associated plasma proteins
 
-To identify sex related proteins, results from linear models fitted previously
-are used.
+Proteins significantly associated with sex are extracted from the linear
+modeling results.
 
 ```{r FIG-volcano-sex, fig.path = IMAGE_PATH, fig.width = 8, fig.height = 8, fig.cap = "Volcano plot for the sex-comparison. Red colored points are those called *significant* by considering the adjusted p-value and CV.", results = "hide", echo = FALSE}
 plot_volcano <- function(x, comparison = character(), ...) {
@@ -925,10 +888,11 @@ significant_points(results, comparison = "SexFemale")
 ```
 
 ```{r, echo = FALSE}
-## Figure for paper.
+#' PAPER Figure 2.
+#' Volcano plots for sex and age associations.
 dr <- "images/manuscript/"
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
-png(paste0(dr, "_Figure_3ab.png"), width = 8.6, height = 4.1, units = "cm",
+png(paste0(dr, "_Figure_2AB.png"), width = 8.6, height = 4.1, units = "cm",
     res = 600, pointsize = 3.5)
 par(mar = c(4, 4.7, 1, 1.5), mfrow = c(1, 2), cex.axis = 2,
     cex.lab = 2, cex.main = 2.5)
@@ -946,9 +910,15 @@ any_sig <- results$significant_BMIcat1 | results$significant_BMIcat3 |
 coefs <- results[any_sig, c("coef_BMIcat1", "coef_BMIcat3", "coef_BMIcat4")]
 colnames(coefs) <- c("1-2", "3-2", "4-2")
 rownames(coefs) <- results[rownames(coefs), "Genes"]
-pheatmap(coefs, filename = paste0(dr, "_Figure_3c.png"),
+## significance cells.
+cell_labels <- results[any_sig, c("significant_BMIcat1", "significant_BMIcat3",
+                                  "significant_BMIcat4")]
+cell_labels <- do.call(
+    cbind, lapply(cell_labels, function(z) ifelse(z, "\u2731", "")))
+pheatmap(coefs, filename = paste0(dr, "_Figure_2C.png"),
          width = 2.8, height = 3.8,
-         breaks = seq(-0.5, 0.5, length.out = 101))
+         breaks = seq(-0.5, 0.5, length.out = 101),
+         display_numbers = cell_labels)
 ```
 
 The (static) table with the significant proteins is shown below:
@@ -967,7 +937,7 @@ significant_table <- function(x, comparison = character(),
     tmp
 }
 sig_tab <- significant_table(results, "SexFemale")
-## Exporting results
+#' Exporting results
 write_xlsx(sig_tab, path = paste0(dr, "/significant_SexFemale.xlsx"))
 pandoc.table(
     sig_tab,
@@ -995,24 +965,16 @@ as RBP4 were reported to be lower in females compared to male
 biased, cohort). This is thus not really a novel finding.
 
 ```{r, BP_Sex_2_figure, fig.path = IMAGE_PATH, fig.width=10, fig.height=6}
-s_2 <- prot_plot(prot_data, aes(x = Sex, y = P01871),
-                 protein = "P01871")
+s_2 <- prot_plot(prot_data, aes(x = Sex, y = P00450),
+                 protein = "P00450")
 ggplotly_or_not(s_2, PLOTLY)
 ```
 
-Female study participants have an abuot 25% lower concentrations of IGHM in
-serum. Immonuglobulins are the antigen recognition molecules of B-cells.
-
 ```{r, BP_Sex_3_figure, fig.path = IMAGE_PATH, fig.width=10, fig.height=6}
-s_3 <- prot_plot(prot_data, aes(x = Sex, y = P01861),
-                 protein = "P01861")
+s_3 <- prot_plot(prot_data, aes(x = Sex, y = P80108),
+                 protein = "P80108")
 ggplotly_or_not(s_3, PLOTLY)
 ```
-
-In contrast to IGHM, IGHG4 has about 30% higher abundance in serum of male study
-participants than of female study participants. Immunoglobin heavy constant
-gamma 4 is predicted to enable antigen binding activity and immunoglobulin
-receptor binding activity.
 
 
 ## Age-associated plasma proteins
@@ -1030,7 +992,7 @@ significant_points(cbind(results, sign_cv), comparison = "Age_10")
 
 ```{r table-sig-age, echo = FALSE, results = "asis"}
 sig_tab <- significant_table(results, "Age_10")
-## Exporting results
+#' Exporting results
 write_xlsx(sig_tab, path = paste0(dr, "/significant_Age.xlsx"))
 pandoc.table(
     sig_tab,
@@ -1361,7 +1323,7 @@ adjp <- apply(Test_output_sens[, grep("p-value", colnames(Test_output_sens))],
               MARGIN = 2, p.adjust, method = "bonferroni")
 colnames(adjp) <- sub("value", "adj", colnames(adjp))
 Test_output_sens  <- cbind(Test_output_sens, adjp)
-## Create result data.frame
+#' Create result data.frame
 comps <- colnames(Test_output_sens)[grep("coef", colnames(Test_output_sens))]
 sign_p <- Test_output_sens[, grep("p-adj", colnames(Test_output_sens))] < 0.05
 colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
@@ -1525,10 +1487,10 @@ abline(0, 1)
 Adjustment for hormonal contraceptive use has only a minimal influence on the
 results for BMI.
 
-
 ```{r}
-## Figure 4 paper.
-png("images/manuscript/Figure_4.png", width = 12, height = 4, units = "cm",
+#' PAPER Figure 3
+#' results from sensitivity analysis
+png("images/manuscript/Figure_3.png", width = 12, height = 4, units = "cm",
     res = 600, pointsize = 4)
 par(mfrow = c(1, 3), mar = c(4.5, 4.5, 1.5, 0.5), cex.lab = 2, bty = "n",
     cex.main = 2.5, cex.axis = 2)
@@ -1544,7 +1506,7 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "Sex association", cex = 1.5)
 grid()
 abline(0, 1)
-## Age
+#' Age
 x <- Test_output[, "coef_Age_10"]
 y <- Test_output_sens[, "coef_Age_10"]
 bg <- rep("#00000040", length(x))
@@ -1556,7 +1518,7 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      main = "Age association", cex = 1.5)
 grid()
 abline(0, 1)
-## BMI 4 vs 2
+#' BMI 4 vs 2
 x <- Test_output[, "coef_BMIcat4"]
 y <- Test_output_sens[, "coef_BMIcat4"]
 bg <- rep("#00000040", length(x))
@@ -1626,7 +1588,7 @@ significantly associated with hormonal contraceptive use.
 
 While proteins significantly associated with hormonal contraceptive use were
 already defined in the previous section on the *full* linear model, we perform
-again the analysis restricting to female participants below 40 years of age to
+again the analysis restricting to female participants below the age of 40 to
 reduce any potential influence of sex and age on the identified proteins (since
 hormonal contraceptive use is clearly related with sex and age). In this subset
 we fit linear models to the data explaining protein abundances by the
@@ -1635,8 +1597,10 @@ use. Coefficients and p-values for the HCU categorical variable are used to
 identify proteins significantly associated with hormonal contraceptive use.
 
 ```{r}
+#' Subset to female participants below 40 years of age
 prot_data_sub <- prot_data[
     which(prot_data$Age < 40 & prot_data$Sex == "Female"), ]
+
 ```
 
 A summary of the data subset is given below.
@@ -1656,20 +1620,20 @@ FunForLinRegHCU <- function(AnalyteName, Data) {
     names(p.Values) <- AnalyteName
     rownames(p.Values) <- c(paste0("coef_", rownames(res)),
                             paste0("p-value_", rownames(res)))
-    return(p.Values)
+    p.Values
 }
 
-## Fit model
+#' Fit model
 LMRegtests <- do.call(
     cbind, lapply(proteins, FunForLinRegHCU, Data = prot_data_sub))
 Test_output_hcu <- t(LMRegtests)
 adjp <- apply(Test_output_hcu[, grep("p-value", colnames(Test_output_hcu))],
               MARGIN = 2, p.adjust, method = "bonferroni")
-## Adjust p-values
+#' Adjust p-values
 colnames(adjp) <- sub("value", "adj", colnames(adjp))
 Test_output_hcu  <- cbind(Test_output_hcu, adjp)
 
-## Calculate effect sizes
+#' Calculate effect sizes
 tmp <- prot_data_sub
 tmp[, proteins] <- scale(tmp[, proteins], scale = TRUE)
 LMRegtests <- do.call(
@@ -1678,7 +1642,7 @@ Test_output <- t(LMRegtests)
 EffectSize <- Test_output[, grep("coef", colnames(Test_output))]
 colnames(EffectSize) <- sub("coef", "effect_size", colnames(EffectSize))
 
-## Define sighificant proteins
+#' Define sighificant proteins
 comps <- colnames(Test_output_hcu)[grep("coef", colnames(Test_output_hcu))]
 sign_p <- Test_output_hcu[, grep("p-adj", colnames(Test_output_hcu))] < 0.05
 colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
@@ -1696,7 +1660,7 @@ colnames(sign_cv) <- sub("coef", "significant", comps)
 #' Add the significant for numeric variable
 sign_cv[, "significant_Age_10"] <- sign_p[, "significant_Age_10"]
 
-## Create result data.frame
+#' Create result data.frame
 results_hcu <- data.frame(
     prot_ann[proteins, c("description", "long_description", "PeptideNN",
                          "PeptideNames", "Protein.Ids", "Protein.Names",
@@ -1728,6 +1692,31 @@ pandoc.table(
     caption = paste0("Number of significant proteins for each ",
                      "comparison and definition of significance.",
                      "cv: difference in concentration > * CV in QC samples."))
+```
+
+```{r}
+#' PAPER Figure 5A
+#' Volcano plot for hormonal contraceptive use.
+png(paste0("images/manuscript/_Figure_5A.png"), width = 5, height = 6,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5, bty = "n")
+cols_vol = rep("#00000080", nrow(results_hcu))
+cols_vol[results_hcu$significant_HCUYes] <- "#c31c1d"
+plot(
+    x = results_hcu$coef_HCUYes,  y= -log10(results_hcu$p.adj_HCUYes),
+    pch = NA, col = "#00000080", bg = "#00000040",
+    xlab = expression(coefficient),
+    ylab = expression(-log[10](p[adj])),
+    xaxt = "n"
+)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs)
+grid()
+points(results_hcu$coef_HCUYes, -log10(results_hcu$p.adj_HCUYes),
+       pch = 21, col = cols_vol, bg = "#00000040",
+       cex = 1.1)
+dev.off()
 ```
 
 ```{r comparison-hcu-results, fig.width = 15, fig.height = 5, fig.cap = "Comparison of coefficients (left) and p-values for association with hormonal contraceptive from the analysis on the full data and female participant subset."}
@@ -1812,7 +1801,7 @@ contraceptive use in the analysis on the subset of the data.
 
 ```{r table-sig-sex-horm-sub, echo = FALSE, results = "asis"}
 sig_tab <- significant_table(results_hcu, "HCUYes")
-## Exporting results
+#' Exporting results
 write_xlsx(sig_tab, path = paste0(dr, "/significant_HCU_subset.xlsx"))
 pandoc.table(
     sig_tab,
@@ -1838,6 +1827,605 @@ pandoc.table(
     tab, style = "rmarkdown",
     caption = "Distribution of absolute effect sizes for significant proteins"
 )
+```
+
+## Comparing HCU effect with data from the BASE-II study
+
+The results for effect of hormonal contraceptive use were replicated in the
+serum proteome data of young women of the BASE-II study. Below we load these
+results (the data analysis leading to these results are described in a separate
+document).
+
+```{r}
+#' Load HCU results from BASE-II
+results_hcu_baseii <- read_xlsx("data/xlsx/Supplementary_Table_S46.xlsx") |>
+    as.data.frame()
+#' Subset and match CHRIS HCU results to those of BASE-II
+results_hcu_mtch <- results_hcu[match(results_hcu_baseii$gene_symbols,
+                                      results_hcu$Genes), ]
+```
+
+The two aligned data sets provide thus abundances for
+`r nrow(results_hcu_baseii)` proteins. Below we compare the effect sizes for HCU
+from the two studies.
+
+```{r}
+png(paste0("images/manuscript/_Figure_5F.png"), width = 5, height = 6,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+
+par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5, bty = "n")
+x <- results_hcu_mtch[, "effect_size_HCUYes"]
+y <- results_hcu_baseii[, "effect_size_HCUYes"]
+corr_es <- cor.test(x, y, method = "spearman")
+xl <- range(c(x, y))
+plot(x = x, y = y, xlim = xl, ylim = xl,
+     xlab = "",
+     ylab = "",
+     pch = 21, col = "#00000080", bg = "#00000040",
+     xaxt = "n", yaxt = "n", cex=1.5)
+mtext(side = 1, text = expression(ES[CHRIS]), cex = 2, line = 3.7)
+mtext(side = 2, text = expression(ES["BASE-II"]), cex = 2, line = 3)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs, padj = 0.4)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs)
+grid()
+abline(0, 1)
+legend("topleft", legend = paste0("r = ", round(corr_es$estimate, 2)),
+       cex = 1.5)
+dev.off()
+```
+
+
+```{r, echo = FALSE}
+#' Volcano plot for BASE-II
+png(paste0("images/manuscript/_Figure_5D.png"), width = 5, height = 6,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5, bty = "n")
+cols_vol = rep("#00000080", nrow(results_hcu_baseii))
+cols_vol[as.logical(results_hcu_baseii$significant_HCUYes)] <- "#c31c1d"
+plot(
+    x = results_hcu_baseii$coef_HCUYes,
+    y= -log10(results_hcu_baseii$p.adj_HCUYes),
+    pch = NA, col = "#00000080", bg = "#00000040",
+    xlab = expression(coefficient),
+    ylab = expression(-log[10](p[adj])),
+    xaxt = "n"
+)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs)
+grid()
+points(results_hcu_baseii$coef_HCUYes,
+       -log10(results_hcu_baseii$p.adj_HCUYes),
+       pch = 21, col = cols_vol, bg = "#00000040",
+       cex = 1.1)
+dev.off()
+```
+
+
+## Evaluating effect of different hormone preparations
+
+Ethinylestradiol (EE), used in most horomonal contraceptive preparations have
+been shown to have a broader effect than the bioidentical horomones or
+progesteron only preparations [@kangasniemi_ethinylestradiol_2023]. We thus here
+evaluate whether we see differences in the abundances of participants by
+hormonal preparations.
+
+For the analysis, we first restrict to oral contraceptives, excluding
+intravaginal and intrauterine contraceptives as well as patches, and categorize
+them into preparations that contain ethinylestradiol (EE), preparations with
+bioidentical estrogens (BE) and progestogen preparations (P4). In the present
+data set, two preparations contain bioidentical hormones: ZOELY (estradiol (E2))
+and KLAIRA (estradiol valerate (EV)).
+
+```{r, results = "asis"}
+#' Define the table with contraceptives; this bases on the manual evaluation
+#' of all preparations exported to an xlsx sheet above.
+oral_hcu <- data.frame(
+    ATC5 = c("G03AA07",
+             "G03AA09",
+             "G03AA10",
+             "G03AA12",
+             "G03AA15",
+             "G03AA16",
+             "G03AB05",
+             "G03AB06",
+             "G03HB01",
+             "G03AC09",
+             "G03AA14",
+             "G03AB08"),
+    ATC5_name = c("levonorgestrel and ethinylestradiol",
+                  "desogestrel and ethinylestradiol",
+                  "gestodene and ethinylestradiol",
+                  "drospirenone and ethinylestradiol",
+                  "chlormadinone and ethinylestradiol",
+                  "dienogest and ethinylestradiol",
+                  "desogestrel and ethinylestradiol",
+                  "gestodene and ethinylestradiol",
+                  "cyproterone and estrogen",
+                  "desogestrel",
+                  "nomegestrol and estradiol",
+                  "dienogest and estradiol"),
+    hcu_class = c("EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "EE",
+                  "P4",
+                  "BE",
+                  "BE"),
+    pre_name = c("LOETTE, MICROGYNON, LESTRONETTE, EGOGYN, MIRANOVA, NAOMI",
+                 "MERCILON, PRACTIL, PLANUM, DESOREEN",
+                 "MINULET, GINODEN, ARIANNA, ESTINETTE, FEDRA, HARMONET, KIPLING, MINESSE, GESTODIOL, GESTODELLE, MELIANE",
+                 "YASMINELLE, LUCINELLE, YASMIN, LUTIZ, LUSINE, YAZ, JASMINELLE, RUBIRA, LUSINELLE",
+                 "BELARA",
+                 "VALETTE, SIBILLA",
+                 "LUCILLE, GRACIAL",
+                 "MILVANE, TRIMINULET",
+                 "DIANE, VISOFID",
+                 "NACREZ, CERAZETTE",
+                 "ZOELY",
+                 "KLAIRA, QLAIRA")
+)
+
+#' restrict contraceptives to the ones in the subset
+contr_sub <- contr[contr$AID %in% rownames(prot_data_sub), ]
+
+#' Add ATC5 medication info to the data.
+prot_data_sub$atc_5 <- NA_character_
+prot_data_sub$atc_5[match(contr_sub$AID, rownames(prot_data_sub))] <-
+    contr_sub$atc_5
+
+#' add numbers
+cnts <- table(prot_data_sub$atc_5)
+oral_hcu$count <- as.integer(cnts[oral_hcu$ATC5])
+
+pandoc.table(
+    oral_hcu[, c("ATC5", "ATC5_name", "hcu_class", "count", "pre_name")],
+    style = "rmarkdown",
+    caption = paste0("Oral contraceptive preparations with ethinylestradiol ",
+                     "(EE), bioidentical estrogen (BE) or progestogen (P4) ",
+                     "in the present data set.")
+)
+```
+
+To define the data set for the analysis, we restrict the data for female
+participants below the age of 40 to those that either take one of the oral
+contraceptives listed above, or that don't take any hormonal contraceptives
+(i.e. excluding also all participants all with ATC3 codes G03H (antiandrogens),
+G02B (contraceptives for topical use) or G03A (contraceptives for systemic use).
+
+```{r}
+#' Define participants that take any type of contraceptive
+aid_any_contraceptive <- med[med$atc_3 %in% c("G03H", "G02B", "G03A"), "AID"] |>
+    unique()
+#' Define participants that take any of the selected contraceptives
+aid_ohc <- med[med$atc_5 %in% oral_hcu$ATC5, "AID"] |> unique()
+#' subset: no contraceptives or selected contraceptives
+prot_data_ohc <- prot_data_sub[
+    (prot_data_sub$HCU == "No" &
+     !(rownames(prot_data_sub) %in% aid_any_contraceptive)) |
+    rownames(prot_data_sub) %in% aid_ohc, ]
+```
+
+Next we assign the class labels to the participants.
+
+```{r}
+prot_data_ohc$hcu_class <- "none"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "EE"]] <- "EE"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "P4"]] <- "P4"
+prot_data_ohc$hcu_class[prot_data_ohc$atc_5 %in%
+                        oral_hcu$ATC5[oral_hcu$hcu_class == "BE"]] <- "BE"
+prot_data_ohc$hcu_class <- factor(prot_data_ohc$hcu_class,
+                                  levels = c("none", "BE", "EE", "P4"))
+table(prot_data_ohc$hcu_class)
+```
+
+We next evaluate the abundances for HCU-associated proteins for these 3
+different preparation classes (in comparison to participants without use of
+hormonal contraceptives.
+
+```{r}
+#' Select the significant proteins.
+prot_hcu <- rownames(results_hcu)[results_hcu$significant_HCUYes]
+
+#' Plot per protein.
+library(beeswarm)
+library(vioplot)
+
+for (prot in prot_hcu) {
+    ann <- prot_ann[prot, c("Genes", "description")]
+    fl <- paste0(IMAGE_PATH, "HCU_med_beeswarm_",
+                 paste0(ann, collapse = "_"), ".png")
+    png(fl, width = 8, height = 8, units = "cm", res = 600, pointsize = 6)
+    par(mar = c(4, 5, 1.5, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n")
+    beeswarm(split(prot_data_ohc[, prot], prot_data_ohc$hcu_class),
+             ylab = expression(log[2]~abundance),
+             las = 2, pch = 16, cex = 0.9, col = "darkgrey",
+             method = "compactswarm", spacing = 0.4,
+             main = paste0(ann, collapse = "; "))
+    bxplot(split(prot_data_ohc[, prot], prot_data_ohc$hcu_class), add = TRUE,
+           probs = 0.5, lwd = 1)
+    grid()
+    dev.off()
+}
+
+#' Adjusting the protein concentrations for age, BMT and fasting.
+tmp <- lapply(proteins, function(z) {
+    a <- prot_data_ohc
+    a$y <- a[, z]
+    l <- lm(y ~ Age_10 + Fasting + BMIcat, data = a)
+    mean(a$y) + l$residuals
+})
+names(tmp) <- proteins
+prot_data_ohc_adj <- cbind(
+    prot_data_ohc[, c("BMIcat", "Sex", "Age", "Fasting", "HCU", "hcu_class")],
+    do.call(cbind, tmp))
+
+for (prot in prot_hcu) {
+    ann <- prot_ann[prot, c("Genes", "description")]
+    fl <- paste0(IMAGE_PATH, "HCU_med_beeswarm_",
+                 paste0(ann, collapse = "_"), "_adj.png")
+    png(fl, width = 8, height = 8, units = "cm", res = 600, pointsize = 6)
+    par(mar = c(4, 5, 1.5, 0.5), cex.axis = 1.5, cex.lab = 1.5, bty = "n")
+    beeswarm(split(prot_data_ohc_adj[, prot], prot_data_ohc_adj$hcu_class),
+             ylab = expression(log[2]~abundance[adj]),
+             las = 2, pch = 16, cex = 0.9, col = "darkgrey",
+             method = "compactswarm", spacing = 0.4,
+             main = paste0(ann, collapse = "; "))
+    bxplot(split(prot_data_ohc_adj[, prot], prot_data_ohc$hcu_class),
+           add = TRUE, probs = 0.5, lwd = 1)
+    grid()
+    dev.off()
+}
+
+#' Beeswarm plot of top 4 significant proteins for the Supplement
+#'
+png("images/manuscript/supplement/Figure_COCs_beeswarm.png", width = 14,
+    height = 12, units = "cm", res = 600, pointsize = 5)
+
+par(mfrow = c(2, 2), cex.axis = 1.5, cex.lab = 1.5, bty = "n",
+    mar = c(4.5, 4.5, 2, 1), cex.main = 2)
+beeswarm(split(prot_data_ohc_adj[, "P01019"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P01019", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P01019"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "P00450"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P00450", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P00450"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "Q96PD5"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["Q96PD5", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "Q96PD5"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+beeswarm(split(prot_data_ohc_adj[, "P08185"], prot_data_ohc_adj$hcu_class),
+         ylab = expression(log[2]~abundance[adj]),
+         las = 2, pch = 16, cex = 1, col = "darkgrey",
+         method = "compactswarm", spacing = 0.4,
+         main = prot_ann["P08185", "Genes"])
+bxplot(split(prot_data_ohc_adj[, "P08185"], prot_data_ohc$hcu_class),
+       add = TRUE, probs = 0.5, lwd = 1)
+grid()
+
+dev.off()
+
+```
+
+Next we fit protein-wise linear models to the data to identify proteins with
+significant differences in abundances between participants taking different
+hormonal contraceptive preparations and participants without HCU.
+
+```{r}
+#' Linear model
+fit_lm <- function(analyte, data) {
+    y <- data[, analyte]
+    l <- lm(y ~ Age_10 + Fasting + BMIcat + hcu_class, data = data)
+    res <- coef(summary(l))[-1, ]
+    vals <- data.frame(c(res[, 1L], res[, 4L]))
+    names(vals) <- analyte
+    rownames(vals) <- c(paste0("coef_", rownames(res)),
+                        paste0("p-value_", rownames(res)))
+    vals
+}
+res <- t(do.call(cbind, lapply(proteins, fit_lm, data = prot_data_ohc)))
+#' Adjusting for multiple hypothesis testing
+adjp <- apply(res[, grep("p-value", colnames(res))],
+              MARGIN = 2, p.adjust, method = "bonferroni")
+colnames(adjp) <- sub("value", "adj", colnames(adjp))
+res <- cbind(res, adjp)
+
+#' Effect sizes
+prot_data_ohc_scaled <- prot_data_ohc
+prot_data_ohc_scaled[, proteins] <-
+    scale(prot_data_ohc_scaled[, proteins], scale = TRUE)
+es <- t(do.call(cbind, lapply(proteins, fit_lm, prot_data_ohc_scaled)))
+es <- es[, grep("coef", colnames(es))]
+colnames(es) <- sub("coef", "effect_size", colnames(es))
+
+#' Determine statistical significance
+comps <- colnames(res)[grep("coef", colnames(res))]
+sign_p <- res[, grep("p-adj", colnames(res))] < 0.05
+colnames(sign_p) <- sub("p-adj", "significant", colnames(sign_p))
+#' Determine significance
+diff_perc <- apply(res[, comps], MARGIN = 2, diff_percentage)
+colnames(diff_perc) <- sub("coef", "diff_perc", colnames(diff_perc))
+#' define which metabolites are considered significant: require p-value < 0.05
+#' and difference in concentration > CV_QC (expressed in %)
+sign_cv <- lapply(comps, function(z) {
+    z <- sub("coef_", "", z)
+    sign_p[, paste0("significant_", z)] &
+        diff_perc[, paste0("diff_perc_", z)] > 100 *
+        prot_ann[proteins, "cv_qc_chris"]
+})
+sign_cv <- do.call(cbind, sign_cv)
+colnames(sign_cv) <- sub("coef", "significant", comps)
+#' Add the significant for numeric variable
+sign_cv[, "significant_Age_10"] <- sign_p[, "significant_Age_10"]
+
+#' Compile the results
+results_ohc <- data.frame(
+    prot_ann[proteins, c("description", "long_description", "PeptideNN",
+                         "PeptideNames", "Protein.Ids", "Protein.Names",
+                         "Genes", "Modified.Sequence", "Stripped.Sequence",
+                         "Precursor.Id", "cv_qc_chris")],
+    res, es, diff_perc, sign_cv)
+
+#' Export results.
+colnames(results_ohc) <- sub("^description$", "Uniprot", colnames(results_ohc))
+colnames(results_ohc) <- sub("^long_description$", "Description",
+                             colnames(results_ohc))
+write_xlsx(
+    results_ohc, path = paste0(dr, "/results_sex_age_bmi_ohc.xlsx"))
+```
+
+The table below lists the significant proteins for the various variables.
+
+```{r, results = "asis"}
+sig_tab <- data.frame(
+    `p_adj < 0.05` = colSums(sign_p),
+    cv = colSums(sign_cv),
+    check.names = FALSE)
+pandoc.table(
+    data.frame(no_sign = sig_tab, check.names = FALSE),
+    style = "rmarkdown",
+    caption = paste0("Number of significant proteins for each ",
+                     "comparison and definition of significance.",
+                     "cv: difference in concentration > * CV in QC samples."))
+```
+
+Only very few proteins, or none were found significant for BE or P4 while a
+large number of significant proteins were identified for EE
+contraceptives. These results are however also affected by the large differences
+in sample sizes for the different preparation groups: the statistical power for
+BE or P4, with sample sizes of 17 or 6, respectively, is much lower resulting
+thus in fewer significant proteins.
+
+```{r fig.cap = "Volcano plots showing the effect of different oral hormonal contraceptive preparations.", fig.width = 15, fig.height = 5}
+yl <- range(-log10(results_ohc[, c("p.adj_hcu_classEE", "p.adj_hcu_classBE",
+                                   "p.adj_hcu_classP4")]))
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBE",
+                            "coef_hcu_classP4")])
+
+par(mfrow = c(1, 3))
+y <- -log10(results_ohc$p.adj_hcu_classBE)
+x <- results_ohc$coef_hcu_classBE
+plot(x, y, main = "HCU: BE", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+y <- -log10(results_ohc$p.adj_hcu_classP4)
+x <- results_ohc$coef_hcu_classP4
+plot(x, y, main = "HCU: P4", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+y <- -log10(results_ohc$p.adj_hcu_classEE)
+x <- results_ohc$coef_hcu_classEE
+plot(x, y, main = "HCU: EE", xlab = "coefficient",
+     ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
+     col = "#000000ce", bg = "#00000060")
+grid()
+
+```
+
+The range of observed coefficients seem to be somewhat comparable between the
+different groups, but p-values are much lower for EE preparations. We thus next
+directly compare the coefficients for the different hormonal preparation
+classes.
+
+```{r, fig.cap = "Comparison of coefficients representing differential abundance between EE, BE or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+a <- results_ohc$coef_hcu_classEE
+b <- results_ohc$coef_hcu_classBE
+d <- results_ohc$coef_hcu_classP4
+
+par(mfrow = c(1, 2), bty = "n")
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(coef[EE]), ylab = expression(coef[BE]),
+     xlim = xl, ylim = xl)
+l <- lm(b ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(coef[EE]), ylab = expression(coef[P4]),
+     xlim = xl, ylim = xl)
+l2 <- lm(d ~ a)
+abline(l2)
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
+grid()
+
+```
+
+The result from the linear model comparing BE against EE.
+
+```{r}
+summary(l)
+```
+
+Correlation between coefficients is thus high, and, with a slope of 0.39, EE
+show a stronger effect than BE. The result from the linear model comparing P4
+against EE.
+
+```{r}
+summary(l2)
+```
+
+Correlation of coefficients between P4 and EE is poor.
+
+```{r}
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classBE")])
+gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classBE)) +
+    geom_point(color = "#00000080", aes(text = Genes)) +
+    xlim(xl) +
+    ylim(xl) +
+    theme_bw()
+ggplotly(gg)
+```
+
+```{r}
+xl <- range(results_ohc[, c("coef_hcu_classEE", "coef_hcu_classP4")])
+gg <- ggplot(results_ohc, aes(x = coef_hcu_classEE, y = coef_hcu_classP4)) +
+    geom_point(color = "#00000080", aes(text = Genes)) +
+    xlim(xl) +
+    ylim(xl) +
+    theme_bw()
+ggplotly(gg)
+```
+
+Summarizing, both, ethinylestradiol and bioidentical estrogen containing
+preparations affect about the same plasma proteins, but the effect of
+ethinylestradiol is stronger. Progestogen containing preparations, on the other
+hand, affect, if at all, different proteins and seem to have in general a much
+lower impact on the plasma proteome.
+
+For completeness we also compare the effect sizes against each other.
+
+```{r, fig.cap = "Comparison of effect sizes between EE, BE or P4 preparations against no HCU.", fig.width = 10, fig.height = 5}
+a <- results_ohc$effect_size_hcu_classEE
+b <- results_ohc$effect_size_hcu_classBE
+d <- results_ohc$effect_size_hcu_classP4
+
+par(mfrow = c(1, 2), bty = "n")
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[BE]),
+     xlim = xl, ylim = xl)
+l <- lm(b ~ a)
+abline(l)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+grid()
+
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = expression(ES[EE]), ylab = expression(ES[P4]),
+     xlim = xl, ylim = xl)
+l2 <- lm(d ~ a)
+abline(l2)
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
+grid()
+
+```
+
+```{r}
+stop()
+
+#' PAPER Figure 6
+#' Effect of hormonal contraceptive preparations.
+png("images/manuscript/_Figure_6A.png", width = 5, height = 5, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 1), mar = c(3.5, 3.5, 1, 0.5), cex.lab = 1.5, bty = "n",
+    cex.axis = 1.5, cex = 1.5)
+
+a <- results_ohc$effect_size_hcu_classEE
+b <- results_ohc$effect_size_hcu_classBE
+d <- results_ohc$effect_size_hcu_classP4
+
+xl <- range(c(a, b, d))
+plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = "", ylab = "",
+     xlim = xl, ylim = xl, xaxt = "n", yaxt = "n")
+l <- lm(b ~ a)
+abline(l)
+grid()
+mtext(side = 1, text = expression(ES[EE]), cex = 2, line = 2.4)
+mtext(side = 2, text = expression(ES[BE]), cex = 2, line = 2.1)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs, padj = 0.4)
+legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
+dev.off()
+
+png("images/manuscript/_Figure_6B.png", width = 5, height = 5, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+par(mfrow = c(1, 1), mar = c(3.5, 3.5, 1, 0.5), cex.lab = 1.5, bty = "n",
+    cex.axis = 1.5, cex = 1.5)
+plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
+     xlab = "", ylab = "",
+     xlim = xl, ylim = xl, xaxt = "n", yaxt = "n")
+l2 <- lm(d ~ a)
+abline(l2)
+grid()
+mtext(side = 1, text = expression(ES[EE]), cex = 2, line = 2.4)
+mtext(side = 2, text = expression(ES[P4]), cex = 2, line = 2.1)
+xat <- axTicks(1, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(xat))
+axis(1, at = xat, labels = labs)
+yat <- axTicks(2, usr = par("usr")[1:2])
+labs <- gsub("-", "\U2212", print.default(yat))
+axis(2, at = yat, labels = labs, padj = 0.4)
+legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
+dev.off()
+```
+
+The summary for the linear model comparing effect sizes for EE against BE:
+
+```{r}
+summary(l)
+```
+
+And the Spearman correlation coefficient:
+
+```{r}
+cor(a, b, method = "spearman")
+```
+
+The summary for the linear model comparing effect sizes for EE against P4:
+
+```{r}
+summary(l2)
+```
+
+And the Spearman correlation coefficient:
+
+```{r}
+cor(a, d, method = "spearman")
 ```
 
 
@@ -2015,6 +2603,8 @@ upset(fromList(prts), nsets = length(prts), order.by = c("freq"))
 ```
 
 ```{r atc3-significant-proteins, fig.path = IMAGE_PATH, fig.width = 14, fig.height = 12, fig.cap = "Significant protein associations for various medications; ATC3 medication."}
+#' PAPER Figure 4
+#' ATC3 medication
 cns <- colnames(results_atc3)
 cns <- cns[grep("significant", cns)]
 cns <- sub("significant_", "", cns)
@@ -2062,7 +2652,7 @@ ggplot(aes(Var2, Var1, fill = value, label = value)) +
     ##       axis.text.y = element_text(hjust = 1, size = 7),
     ##       plot.margin = margin(t = 5, l = 40))
 
-ggsave("images/manuscript/Figure_ATC3.png", plot = plt, dpi = 600, width = 12,
+ggsave("images/manuscript/Figure_4.png", plot = plt, dpi = 600, width = 12,
        height = 12, units = "cm", scale = 2.5)
 plt
 ```
@@ -2336,7 +2926,7 @@ As expected, a clear difference in age distribution can be seen between the
 categories. To reduce the influence of age we restrict the analysis to a smaller
 age range.
 
-```{r, fig.cap = "Age distribution for women below 40 in the various HCU categories."}
+```{r, fig.cap = "Age distribution for women below the age of 40 in the various HCU categories."}
 women_data_40 <- women_data[women_data$Age < 40, ]
 
 table(women_data_40$HCU_history)
@@ -2348,7 +2938,7 @@ grid()
 
 We next evaluate the concentration of AGT in the different groups.
 
-```{r, fig.cap = "Abundance of AGT in women (below age of 40) in the various HCU categories."}
+```{r, fig.cap = "Abundance of AGT in women (below the age of 40) in the various HCU categories."}
 vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
         main = "AGT, HCU, age < 40", ylab = expression(log[2]~abundance))
 grid()
@@ -2362,7 +2952,7 @@ however not take the last time hormonal contraceptives were taken into account.
 We next evaluate differences in protein concentrations between participants
 currently taking hormonal contraceptives and those that never used them as well
 as between participants previously taking hormonal contraceptives and those that
-never used them. This analysis is performed on female participants of age below
+never used them. This analysis is performed on female participants below the age
 40 for which clear information on current or past hormonal contraceptive use is
 available.
 
@@ -2569,7 +3159,7 @@ women_data_40$eHCU_free_period <- women_data_40$Age -
 The distribution of this *HCU free period* for women that took HCU in the past
 is shown below. Note that we remove negative values.
 
-```{r, fig.cap = "Distribution of estimated HCU free period for women (below 40) with past HCU."}
+```{r, fig.cap = "Distribution of estimated HCU free period for women (below the age of 40) with past HCU."}
 women_data_40_past <- women_data_40[women_data_40$HCU_history == "past", ]
 
 #' Remove negative values
@@ -2578,13 +3168,13 @@ women_data_40_past$eHCU_free_period[which(women_data_40_past$eHCU_free_period < 
 
 plot(density(women_data_40_past$eHCU_free_period, na.rm = TRUE),
      xlab = "estimated time period without HCU",
-     main = "Women below 40 with previous HCU")
+     main = "Women below the age of 40 with previous HCU")
 ```
 
 For these we next evaluate whether there is a dependency between the estimated
 HCU free time period and concentrations for selected proteins.
 
-```{r, fig.cap = "Relationship between AGT plasma concentrations and HCU free time for women below 40 with past HCU."}
+```{r, fig.cap = "Relationship between AGT plasma concentrations and HCU free time for women below the age of 40 with past HCU."}
 
 x <- women_data_40_past$eHCU_free_period
 y <- women_data_40_past$P01019
@@ -2652,10 +3242,16 @@ pairs$parameter_name <- anns[pairs$label, "name"]
 pairs$hgnc_symbol <- prot_ann[pairs$Uniprot, "Genes"]
 pairs$description <- prot_ann[pairs$Uniprot, "long_description"]
 pairs$rho <- NA_real_
+pairs$p.value <- NA_real_
 for (i in seq_len(nrow(pairs))) {
-    pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
-                        labdata_info[rownames(prot_data), pairs[i, "label"]],
-                        use = "pairwise.complete.obs", method = "spearman")
+    tmp <- cor.test(prot_data[, pairs[i, "Uniprot"]],
+                    labdata_info[rownames(prot_data), pairs[i, "label"]],
+                    use = "pairwise.complete.obs", method = "spearman")
+    pairs$rho[i] <- tmp$estimate
+    pairs$p.value[i] <- tmp$p.value
+    ## pairs$rho[i] <- cor(prot_data[, pairs[i, "Uniprot"]],
+    ##                     labdata_info[rownames(prot_data), pairs[i, "label"]],
+    ##                     use = "pairwise.complete.obs", method = "spearman")
 }
 pandoc.table(pairs, style = "rmarkdown", split.tables = Inf,
              caption = "Correlation with selected laboratory parameters")
@@ -2786,6 +3382,11 @@ for (protein in proteins) {
 }
 ```
 
+Note on Figures for the manuscript. Plotting ggplot and base R plots into the
+same figure is not (easily) possible, and also some of the plots were created in
+Berlin hence we need to merge the figures manually. This is done with
+Gimp. Original plots are not modified. Labels (A, B, ...) are added manually
+using the *sans serif* font and using a size of 120px.
 
 # Session information
 
