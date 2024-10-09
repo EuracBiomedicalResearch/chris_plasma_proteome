@@ -292,25 +292,30 @@ gg_1 <- autoplot(prcomp(scaledData), data = prot_data,
 ggplotly_or_not(gg_1, PLOTLY)
 ```
 
-```{r}
+```{r FIGURE_1_MANUSCRIPT}
 #' FIGURE 1
 #' Transparency for protein names depending on arrow length?
-png("images/manuscript/Figure_1.png", width = 10, height = 10, units = "cm",
+png("images/manuscript/Figure_1.png", width = 15, height = 5, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
-pc <- prcomp(scaledData)
+pc_all <- prcomp(scaledData)
 library(CompMetaboTools)
 cols <- rep("#E41A1C", nrow(prot_data))
 cols[prot_data$Sex == "Male"] <- "#377EB8"
-layout(matrix(1:2), heights = c(1, 0.25))
-par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
-         xlim = c(-16, 9))
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.7), cex.lab = 2, bty = "n",
+    cex.axis = 1.5)
+plot_pca(pc_all, pch = NA, xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc_all$x[, 1], pc_all$x[, 2], pch = 21, col = paste0(cols, 80),
+       bg = paste0(cols, 60), cex = 1.5)
+plot_pca(pc_all, pch = NA, col = NA, xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
 unsigned.range <- function(x)
         c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
+y <- pc_all$rotation[, 1:2]
 scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+    unsigned.range(y[, 1]) / unsigned.range(pc_all$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc_all$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
 y <- y / scl
 arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
@@ -318,16 +323,87 @@ arrows(x0 = 0, x1 = y[, 1],
        col = "#00000050")
 text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
      col = "#00000080", cex = 1.4)
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
-       cex = 1.5)
+## Correlation PC1 and age.
+pc_s <- summary(pc_all)
+plot(pc_all$x[, 1], prot_data$Age, pch = 21, col = paste0(cols, 80),
+     bg = paste0(cols, 60), cex = 1.5, xlim = c(-16, 9),
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age")
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
 grid()
-## Age distribution along x.
-brks <- seq(-16, to = 9, by = 1)
-f <- cut(pc$x[, 1], breaks = brks)
-ages <- split(prot_data$Age, f = f)
-par(mar = c(0.5, 4.3, 0.5, 0.5))
-boxplot(ages, at = brks[-1] - 0.5, xlim = c(-16, 9), xaxt = "n",
-        ylab = "Age", lwd = 0.75)
+dev.off()
+
+## Males only
+png("images/manuscript/supplement/Figure_1_male.png", width = 15, height = 5,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+idx <- which(prot_data$Sex == "Male")
+pc <- prcomp(scale(prot_data[idx, proteins], scale = TRUE))
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.5), cex.lab = 2, bty = "n",
+    cex.axis = 1.5)
+plot_pca(pc, pch = NA, xlim = c(-16, 12), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = paste0(cols[idx], 80),
+       bg = paste0(cols[idx], 60), cex = 1.5)
+plot_pca(pc, pch = NA, col = NA, xlim = c(-16, 12), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
+     col = "#00000080", cex = 1.4)
+## Correlation PC1 and age.
+pc_s <- summary(pc)
+plot(pc$x[, 1], prot_data$Age[idx], pch = 21, col = paste0(cols[idx], 80),
+     bg = paste0(cols[idx], 60), cex = 1.5,
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age", xlim = c(-16, 12))
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
+grid()
+dev.off()
+
+## Females only
+png("images/manuscript/supplement/Figure_1_female.png", width = 15, height = 5,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+idx <- which(prot_data$Sex == "Female")
+pc <- prcomp(scale(prot_data[idx, proteins], scale = TRUE))
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.5), cex.lab = 2, bty = "n",
+    cex.axis = 1.5)
+plot_pca(pc, pch = NA, xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = paste0(cols[idx], 80),
+       bg = paste0(cols[idx], 60), cex = 1.5)
+plot_pca(pc, pch = NA, col = NA, xlim = c(-16, 9), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
+     col = "#00000080", cex = 1.4)
+## Correlation PC1 and age.
+pc_s <- summary(pc)
+plot(pc$x[, 1], prot_data$Age[idx], pch = 21, col = paste0(cols[idx], 80),
+     bg = paste0(cols[idx], 60), cex = 1.5,
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age", xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
 grid()
 dev.off()
 
@@ -349,10 +425,6 @@ dev.off()
 ## grid()
 ## dev.off()
 ```
-
-There is an interesting separation on PC1 with a subgroup of mostly female
-participants which seems also to be related to Age (not shown).
-
 From the scores, there is a clear effect of sex in direction of PC1. From the
 loadings we can observe relationships between proteins. Every arrow corresponds
 to the one parameter (protein) in data set. Longest arrows in the direction of
@@ -365,20 +437,12 @@ that there is no correlation between corresponding parameters.  Note that with
 the large numbers of parameters in PCA, some loadings can be placed close to
 each other even if there is no strong correlation. Thus, attention is necessary.
 
-The protein P01019 (AGT, angiotensinogen) seems to be one driver for the
-separation of a set of (younger) female participants from the bulk of male and
-female participants. Since this protein was shown in the exploratory analysis to
-be eventually dependent on medication with sexual hormones we highlight
-participants with that treatment in the PCA below.
-
-We next define the categorical variable for *hormonal contraceptives* using the
-ATC level 3 medication information from CHRIS. In particular, we define the
-trait using the ATC3 categories *HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE* and
-*ANTIANDROGENS*. This definition is similar to the one in Ramsey et al
-[@ramsey_variation_2016] that considered women taking oral
-contraceptives. Contraceptives for topical use are not included in this
-definition, because they don't have the same route of administration
-(i.e. orally and metabolized in/through the liver).
+There is an interesting separation on PC1 with a subgroup of mostly female
+participants which seems also to be related to Age (not shown). We next apply a
+multivariate regression model to the data to identify which of the available
+variables are strongest associated with the PC1. We first prepare the medication
+data and define a (categorical) variable for each ATC level 3 medication taken
+on a regular basis by at least 14 CHRIS participants.
 
 ```{r, warning = FALSE}
 #' Prepare medication data
@@ -395,6 +459,89 @@ med$atc_2_name <- atc_df[match(med$atc_2, atc_df$key), "name"]
 med$atc_3_name <- atc_df[match(med$atc_3, atc_df$key), "name"]
 med$atc_4_name <- atc_df[match(med$atc_4, atc_df$key), "name"]
 med$atc_5_name <- atc_df[match(med$atc_5, atc_df$key), "name"]
+
+#' Restrict to medications taken by at least 14 individuals on a regular
+#' basis
+tmp <- med[med$x0dd13 %in% c("daily", "every 2. day", "every 3. day",
+                             "every 4. day = 2x per week"), ]
+
+level3 <- split(tmp$AID, tmp$atc_3)
+level3 <- lapply(level3, unique)
+level3 <- level3[lengths(level3) > 14]
+
+#' Reformat into categorical variables
+general_data <- prot_data[, c("BMIcat", "Sex", "Age_10", "Fasting")]
+tmp <- lapply(names(level3), function(z) {
+    cl <- rep("No", nrow(general_data))
+    cl[rownames(general_data) %in% level3[[z]]] <- "Yes"
+    factor(cl)
+})
+names(tmp) <- names(level3)
+general_data <- cbind(general_data, do.call(cbind.data.frame, tmp))
+
+```
+
+Next we fit a multivariate regression model explaining PC1 by all available
+variables, which includes age, sex, (categorical) BMI, (binary) self-reported
+fasting status and the above medication information.
+
+```{r}
+#' association analysis: age, sex, BMI, medication on PC1.
+general_data$pc1 <- pc_all$x[, 1L]
+lmod <- lm(pc1 ~ ., data = general_data)
+```
+
+The significantly associated variables (at an alpha = 0.01) are listed below.
+
+```{r, results = "asis"}
+lsum <- summary(lmod)
+ltab <- lsum$coefficients[lsum$coefficients[, 4L] < 0.01, c(1L, 4L)]
+ltab <- data.frame(variable = sub("Yes", "", rownames(ltab)), ltab,
+                   check.names = FALSE)
+ltab$name <- atc_df[match(ltab$variable, atc_df$key), c("name")]
+ltab <- ltab[rownames(ltab) != "(Intercept)", ]
+ltab <- ltab[order(ltab[, 3]), ]
+rownames(ltab) <- NULL
+pandoc.table(
+    ltab, style = "rmarkdown", split.table = "Inf",
+    caption = "Variables significantly associated with PC1.")
+```
+
+The sample sizes for the individual significant variables are:
+
+```{r}
+summary(general_data[, c("Sex", "BMIcat", "G03A", "G03H", "G02B", "G03F")])
+```
+
+Hormonal contraceptives seem to be the strongest drivers for the observed
+separation on PC1, which is also related to age, sex and obesity.
+
+To exclude potential other technical influence we in addition evaluate whether
+there is a relationship between PC1 and the *age* of the samples, which we
+estimate from the study participants' participation date.
+
+```{r, fig.width = 5, fig.height = 5, fig.cap = "PC1 against the sample age (in days)."}
+#' Calculate the difference (in days) between the partipation date and an
+#' arbitrary day, in our case 2022-02-14.
+part_date <- gen_info[rownames(prot_data), "x0_examd"]
+sample_age <- as.integer(difftime("2022-02-14", part_date, units = "days"))
+plot(pc_all$x[, 1L], sample_age, xlab = "PC1", ylab = "Sample age [days]")
+grid()
+cor(pc_all$x[, 1L], sample_age, method = "spearman")
+```
+
+There is thus no relationship between the samples' age and PC1.
+
+We thus next define the categorical variable for *hormonal contraceptives* using
+the ATC level 3 medication information from CHRIS. In particular, we define the
+trait using the ATC3 categories *HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE* and
+*ANTIANDROGENS*. This definition is similar to the one in Ramsey et al
+[@ramsey_variation_2016] that considered women taking oral
+contraceptives. Contraceptives for topical use are not included in this
+definition, because they don't have the same route of administration
+(i.e. orally and metabolized in/through the liver).
+
+```{r, warning = FALSE}
 #' Subset to selected sex hormone treatment (WHO definition)
 med_sex_horm <- med[med$atc_3_name %in%
                     c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
@@ -422,14 +569,14 @@ ggplotly_or_not(gg_2, PLOTLY)
 png("images/manuscript/supplement/Figure_S149.png", width = 8.2, height = 6.4,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 par(mar = c(4.5, 4.3, 0.5, 0.5), cex.lab = 1.5, bty = "n")
-plot_pca(pc, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
+plot_pca(pc_all, pch = NA, col = NA, bg = paste0(cols, 60), cex = 1.5,
          xlim = c(-16, 9))
 unsigned.range <- function(x)
         c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
-y <- pc$rotation[, 1:2]
+y <- pc_all$rotation[, 1:2]
 scl <- max(
-    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
-    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+    unsigned.range(y[, 1]) / unsigned.range(pc_all$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc_all$x[, 2]))
 y <- y / scl
 arrows(x0 = 0, x1 = y[, 1],
        y0 = 0, y1 = y[, 2],
@@ -441,7 +588,7 @@ text(y[, 1] * 1.1, y[, 2] * 1.1, labels = prot_ann[rownames(y), "Genes"],
 cols <- rep("#E41A1C", nrow(prot_data))
 cols[prot_data$Sex == "Male"] <- "#377EB8"
 cols[prot_data$HCU == "Yes"] <- "#000000"
-points(pc$x[, 1], pc$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
+points(pc_all$x[, 1], pc_all$x[, 2], pch = 21, col = NA, bg = paste0(cols, 60),
        cex = 1.5)
 grid()
 dev.off()
@@ -2351,7 +2498,6 @@ grid()
 ```
 
 ```{r}
-stop()
 
 #' PAPER Figure 6
 #' Effect of hormonal contraceptive preparations.
@@ -3366,20 +3512,43 @@ plot(results_hcu[ramsey$UniProt, "coef_HCUYes"], ramsey$coef)
 # Data, figures etc for the manuscript's supplement
 
 ```{r}
+library(MetaboCoreUtils)
 dist_plot <- function(x, protein, ...) {
     plot(density(x[, protein]), xlab = expression(log[2]~abundance),
          main = paste0(protein, " (", prot_ann[protein, "Genes"], ")"), ...)
     grid()
+    legend("topleft",
+           legend = c(
+               paste0("IQR(study): ", format(IQR(x[, protein]), digits = 2)),
+               paste0("CV (study): ", format(rsd(2^x[, protein]), digits = 2)),
+               paste0("CV (QC): ", format(prot_ann[protein, "cv_qc_chris"],
+                                          digits = 2))))
 }
 dr <- paste0("images/manuscript/supplement/")
 dir.create(dr, showWarnings = FALSE, recursive = TRUE)
-for (protein in proteins) {
-    fl <- paste0(dr, "density-", protein, ".png")
-    png(fl, width = 10, height = 4, units = "cm", res = 300, pointsize = 4)
-    par(mar = c(4.5, 4.2, 1.5, 0.5))
-    dist_plot(prot_data, protein, lwd = 2)
+nr_plots <- 10
+i <- 1
+while (TRUE) {
+    idx <- seq(i, length.out = nr_plots)
+    idx <- idx[idx <= length(proteins)]
+    if (!length(idx))
+        break
+    fl <- paste0(dr, "density-", i, ".png")
+    png(fl, width = 10, height = 18, units = "cm", res = 300, pointsize = 4)
+    par(mfrow = c(length(idx) / 2, 2), mar = c(4.5, 4.2, 1.5, 0.5))
+    for (j in idx)
+        dist_plot(prot_data, proteins[j], lwd = 2)
     dev.off()
+    i <- i + nr_plots
 }
+## for (protein in proteins) {
+##     fl <- paste0(dr, "density-", protein, ".png")
+##     png(fl, width = 10, height = 4, units = "cm", res = 300, pointsize = 4)
+##     par(mar = c(4.5, 4.2, 1.5, 0.5))
+##     dist_plot(prot_data, protein, lwd = 2)
+##     dev.off()
+## }
+
 ```
 
 Note on Figures for the manuscript. Plotting ggplot and base R plots into the
