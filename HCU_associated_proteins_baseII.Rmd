@@ -36,10 +36,6 @@ is recorded on the basis of self-reported questionnaires.
 
 ## Data import and cleaning
 
-```
-
-```
-
 ```{r data-libraries}
 library(RColorBrewer)
 library(pander)
@@ -467,7 +463,7 @@ regulated proteins (see Table), categorized by HCU:
 png("../../results/plots/violin_hcu_r/figure_2XX_SERPINA6.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
 f[f == "m"] <- "Men"
@@ -496,7 +492,7 @@ dev.off()
 png("../../results/plots/violin_hcu_r/figure_2XX_AGT.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 # par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
@@ -525,7 +521,7 @@ dev.off()
 png("../../results/plots/violin_hcu_r/figure_2XX_PGLYRP2.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 # par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
@@ -555,7 +551,7 @@ Below Volcano plots display the coefficients and standardized effects sizes for 
 ```{r, include=FALSE}
 png("../../results/plots/volcano/Figure_2XXX_coef.png", width = 5, height = 6, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
-par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n")
+par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n", las = 1)
 cols_vol = rep("#00000080", nrow(results_hcu))
 cols_vol[results$p.adj_HCUYes < 0.05] <- "#c31c1d"
 plot(
