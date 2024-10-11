@@ -16,35 +16,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 # General data overview
 
-## Signal distributions of individual proteins
-
-Distribution of $log_{2}$ transformed signal distributions in the analyzed
-samples is shown for each protein.
-
-```{r, results = "asis"}
-library(readxl)
-library(pander)
-results <- as.data.frame(read_xlsx(
-    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
-           "results_sex_age_bmi_hcu_adjusted.xlsx")))
-rownames(results) <- results$Uniprot
-
-fls <- dir("images/manuscript/supplement", pattern = "^density",
-           full.names = TRUE)
-
-for (i in seq_along(fls)) {
-    prot_id <- sub("^density-", "", basename(fls[i]))
-    prot_id <- sub(".png", "", prot_id, fixed = TRUE)
-    cat("\n\\begin{figure}[H]\n")
-    cat("\\centering\n")
-    cat("  \\includegraphics[width=0.7\\textwidth]{",
-        fls[i], "}\n", sep = "")
-    cat("  \\caption{Signal distribution for ", prot_id,
-        " (", results[prot_id, "Genes"],").}\n", sep = "")
-    cat("\\end{figure}\n")
-    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
-    }
-```
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
@@ -64,10 +35,20 @@ cat("\\end{figure}\n")
 **Table S1** (external spreadsheet, xlsx format): Results from association
 analyses.
 
+
+# Protein Coverage and Variation in the CHRIS Cohort
+
 **Table S2** (external spreadsheet, xlsx format): Functional annotations for
 detected proteins.
 
 ```{r, results = "asis"}
+library(readxl)
+library(pander)
+results <- as.data.frame(read_xlsx(
+    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
+           "results_sex_age_bmi_hcu_adjusted.xlsx")))
+rownames(results) <- results$Uniprot
+
 tab <- results[,
                c("Uniprot", "Genes", "Description",
                  "cv_study",
@@ -153,28 +134,74 @@ cat("  \\includegraphics[width=0.7\\textwidth]{",
     sep = "")
 cat("  \\caption{Correlation between quantified protein abundances and ",
     "related diagnostic assays. Shown are MS-determind, relative protein ",
-    "abundances (normalized signal intensities) on the y-axis and ",
+    "abundances (normalized intensities) on the y-axis and ",
     "related diagnostic assays on the x-axis.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
 ```
 
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_1_female.png}\n",
+    sep = "")
+cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
+    "proteome of female CHRIS participants. A) Sample grouping by PC1 and ",
+    "PC2. Each point represents an individual with a different color used ",
+    "for men (blue) and women (red). B) Loadings from the PCA. Each arrow ",
+    "represents one protein with its length and direction indicating their ",
+    "impact and importance for that principal component. C) Relationship ",
+    "between PC1 (x-axis) and the participant’s age (y-axis). Points are ",
+    "colored by participants’ sex.}\n",
+    sep = "")
+cat("\\end{figure}\n")
 
-## Principal Component Analysis and influence of hormonal contraceptive use
+```
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
-    "images/manuscript/supplement/Figure_S149.png}\n",
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_1_male.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the CHRIS plasma proteome ",
-    "data. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives (ATC level 3 code G03A, ",
-    "hormonal contraceptives for systemic use, and ATC level 4 G03HB, ",
-    "antiandrogens and estrogens) are colored grey.}\n")
+cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
+    "proteome of male CHRIS participants. A) Sample grouping by PC1 and ",
+    "PC2. Each point represents an individual with a different color used ",
+    "for men (blue) and women (red). B) Loadings from the PCA. Each arrow ",
+    "represents one protein with its length and direction indicating their ",
+    "impact and importance for that principal component. C) Relationship ",
+    "between PC1 (x-axis) and the participant’s age (y-axis). Points are ",
+    "colored by participants’ sex.}\n",
+    sep = "")
 cat("\\end{figure}\n")
+
+```
+
+```{r pc1-association, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+## The data for this table is created in code chunk "table-association-pc1"
+tmp <- data.frame(
+    `$Variable$` = c("G03A", "Age_10", "G03H", "Sex", "G02B", "BMI4", "G03F"),
+    `$Description$` = c("Hormonal contraceptives for systemic use",
+                                 "Participant's age",
+                                 "Antiandrogens",
+                                 "Sex",
+                                 "Contraceptives for topical use",
+                                 "BMI category 4 (obese)",
+                                 "Progestogens and estrogens in combination"),
+    `$coef$` = c(-6.543, 0.5611, -8.717, -0.9742, -3.138, 0.4193, -1.769),
+    `$p-value$` = c(5.673e-299, 1.133e-72, 1.112e-48, 1.53e-27, 3.546e-19,
+                    0.0006855, 0.001349),
+    check.names = FALSE
+)
+rownames(tmp) <- NULL
+pandoc.table(
+    tmp, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Variables significantly associated with principal component 1. ",
+        "Results are ordered by p-value."))
 
 ```
 
@@ -821,4 +848,30 @@ Time  & \%A & \%B & FR {[}ml/mn{]} & Time  & \%A  & \%B  & FR {[}ml/mn{]}  \\
 5.2   & 97  & 3   & 0.8            &       &      &      &
 \end{tabular}
 \end{table}
+```
+
+\pagebreak
+
+# Appendix A: Abundance Distribution of Individual Proteins
+
+Distribution of $log_{2}$ transformed abundance distributions in the analyzed
+samples is shown for each protein.
+
+```{r, results = "asis"}
+fls <- dir("images/manuscript/supplement", pattern = "^density",
+           full.names = TRUE)
+
+for (i in seq_along(fls)) {
+    cat("\n\\begin{figure}[H]\n")
+    cat("\\centering\n")
+    cat("  \\includegraphics[width=0.9\\textwidth]{",
+        fls[i], "}\n", sep = "")
+    cat("  \\caption{Abundance distribution for of indicated proteins in ",
+        "CHRIS study samples. Inter quartile range (IQR) in study samples and ",
+        "coefficient of variation (CV) in study and quality control samples is",
+        "shown in the top left of each plot.}",
+        sep = "")
+    cat("\\end{figure}\n")
+    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
+    }
 ```
