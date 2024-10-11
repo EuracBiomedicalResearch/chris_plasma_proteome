@@ -1,5 +1,5 @@
 ---
-title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Plasma Proteome in a Broad Population Study}"
+title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Cirulating Proteome in a Broad Population Study}"
 output:
   pdf_document:
     includes:
@@ -14,7 +14,7 @@ output:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-# General data overview
+# Study Sample Characteristics and General Data Overview
 
 
 ```{r, results = "asis"}
@@ -206,7 +206,7 @@ pandoc.table(
 ```
 
 
-# Sex, age and body mass index associated proteins
+# Plasma Proteome Associations to Sex, Age and BMI
 
 ## Sex-associated plasma proteins
 
@@ -408,7 +408,7 @@ pandoc.table(
 ```
 
 
-# Sensitivity analysis
+## Sensitivity analysis
 
 To evaluate the influence of hormonal contraceptive use on results for age, sex
 and BMI associations, the analysis was repeated without adjustment for hormonal
@@ -466,7 +466,9 @@ pandoc.table(
 
 ```
 
-# Plasma proteins associated with medication (ATC level 3)
+# Influence of Medication on the Plasma Proteome
+
+## ATC level 3 Medications
 
 Associations were evaluated for 27 ATC level 3 medications taken on a regular
 basis (at least twice per week) by more than 14 study participants. Significant
@@ -529,7 +531,7 @@ for (i in seq_len(nrow(atc_3_names))) {
 }
 ```
 
-# Plasma proteins associated with medication (ATC level 4)
+## ATC level 4 medications
 
 Associations were evaluated for 34 ATC level 4 medications taken on a regular
 basis (at least twice per week) by more than 14 study participants. The
@@ -661,7 +663,7 @@ for (i in seq_len(nrow(atc4_table))) {
 }
 ```
 
-# Plasma proteins associated with usage of hormonal contraceptives
+# Oral Hormonal Contraceptives Shape the Plasma Proteome in Female Study Participants
 
 
 A comparison of the results from the analysis on the full data set and on the
@@ -687,7 +689,7 @@ cat("\\end{figure}\n")
 ```
 
 
-# Replication of results in the serum proteomics data of the BASE-II cohort
+# Hormonal Contraceptive Use Induces Similar Proteomics Changes in an Independent Cohort
 
 Influence of hormonal contraceptives on the serum proteome of female study
 participants below the age of 40 was validated using data from an independent
@@ -731,7 +733,7 @@ analysis of the BASE-II cohort.
 \setcounter{table}{46}
 
 
-# Influence of different combined oral contraceptives on the CHRIS plasma proteome
+# Combined Hormonal Contraceptives Containing Ethinylestradiol Have a Stronger Effect Than Those with Natural Estrogens
 
 
 ```{r, results = "asis"}
@@ -800,7 +802,7 @@ cat("\\end{figure}\n")
 association analysis with different COCs.
 
 
-# Previous hormonal contraceptive use
+# No Long-Lasting Effects of Hormonal Contraceptives on the Plasma Proteome Observed
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
