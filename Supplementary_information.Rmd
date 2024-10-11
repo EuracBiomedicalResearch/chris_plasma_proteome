@@ -531,6 +531,23 @@ for (i in seq_len(nrow(atc_3_names))) {
 }
 ```
 
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_ATC3.png}\n",
+    sep = "")
+cat("  \\caption{Significant associations between proteins (rows) and ATC",
+    " level 3 medications (columns). Effect sizes (as a number and color coded)",
+    " are only shown for significant associations. Ordering of rows and ",
+    "columns represent the result from a hierarchical cluster analysis (",
+    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+
 ## ATC level 4 medications
 
 Associations were evaluated for 34 ATC level 4 medications taken on a regular
@@ -596,7 +613,9 @@ cat("  \\includegraphics[width=0.9\\textwidth]{",
     sep = "")
 cat("  \\caption{Significant associations between proteins (rows) and ATC",
     " level 4 medications (columns). Effect sizes (as a number and color coded)",
-    " are only shown for significant associations.}\n",
+    " are only shown for significant associations. Ordering of rows and ",
+    "columns represent the result from a hierarchical cluster analysis (",
+    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
     sep = "")
 cat("\\end{figure}\n")
 

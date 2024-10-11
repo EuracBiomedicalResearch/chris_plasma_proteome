@@ -791,7 +791,7 @@ mtext(side = 3, outer = FALSE, text = "B", cex = 5, at = -0.14, line = 0.5)
 ```{r}
 #' PAPER, Figure 5B
 #' AGT abundance in HCU, women and men.
-png("images/manuscript/_Figure_5B.png", width = 5,
+png("images/manuscript/_Figure_4B.png", width = 5,
     height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 par(mfrow = c(1, 1), mar = c(5, 6, 5, 1) + 0.1, cex.axis = 2, cex.lab = 2,
     bty = "n", cex.main = 2.5, las = 1)
@@ -818,7 +818,7 @@ dev.off()
 
 #' PAPER, Figure 5C
 #' ROC for AGT
-png("images/manuscript/_Figure_5C.png", width = 5,
+png("images/manuscript/_Figure_4C.png", width = 5,
     height = 6, units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 par(mfrow = c(1, 1), mar = c(5, 6, 5, 1) + 0.1, cex.axis = 2, cex.lab = 2,
     bty = "n", cex.main = 2.5, las = 1)
@@ -1963,7 +1963,7 @@ pandoc.table(
 ```{r}
 #' PAPER Figure 5A
 #' Volcano plot for hormonal contraceptive use.
-png(paste0("images/manuscript/_Figure_5A.png"), width = 5, height = 6,
+png(paste0("images/manuscript/_Figure_4A.png"), width = 5, height = 6,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5,
     bty = "n", las = 1)
@@ -2117,7 +2117,7 @@ The two aligned data sets provide thus abundances for
 from the two studies.
 
 ```{r}
-png(paste0("images/manuscript/_Figure_5F.png"), width = 5, height = 6,
+png(paste0("images/manuscript/_Figure_4F.png"), width = 5, height = 6,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 
 par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5,
@@ -2149,7 +2149,7 @@ dev.off()
 
 ```{r, echo = FALSE}
 #' Volcano plot for BASE-II
-png(paste0("images/manuscript/_Figure_5D.png"), width = 5, height = 6,
+png(paste0("images/manuscript/_Figure_4D.png"), width = 5, height = 6,
     units = "cm", res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.lab = 2, cex.axis = 2, cex.main = 2.5,
     bty = "n", las = 1)
@@ -2621,59 +2621,9 @@ grid()
 
 ```{r}
 
-#' PAPER Figure 6
+#' PAPER Figure 5
 #' Effect of hormonal contraceptive preparations.
-## png("images/manuscript/_Figure_6A.png", width = 5, height = 5, units = "cm",
-##     res = 600, pointsize = 4, type = "cairo-png")
-## par(mfrow = c(1, 1), mar = c(3.5, 3.5, 1, 0.5), cex.lab = 1.5, bty = "n",
-##     cex.axis = 1.5, cex = 1.5, las = 1)
-
-## a <- results_ohc$effect_size_hcu_classEE
-## b <- results_ohc$effect_size_hcu_classBE
-## d <- results_ohc$effect_size_hcu_classP4
-
-## xl <- range(c(a, b, d))
-## plot(a, b, pch = 21, col = "#00000080", bg = "#00000040",
-##      xlab = "", ylab = "",
-##      xlim = xl, ylim = xl, xaxt = "n", yaxt = "n")
-## l <- lm(b ~ a)
-## abline(l)
-## grid()
-## mtext(side = 1, text = expression(ES[EE]), cex = 2, line = 2.4)
-## mtext(side = 2, text = expression(ES[BE]), cex = 2, line = 2.1)
-## xat <- axTicks(1, usr = par("usr")[1:2])
-## labs <- gsub("-", "\U2212", print.default(xat))
-## axis(1, at = xat, labels = labs)
-## yat <- axTicks(2, usr = par("usr")[1:2])
-## labs <- gsub("-", "\U2212", print.default(yat))
-## axis(2, at = yat, labels = labs, padj = 0.4)
-## legend("topleft", legend = paste0("slope: ", format(coef(l)[2], digits = 3)))
-## dev.off()
-
-## png("images/manuscript/_Figure_6B.png", width = 5, height = 5, units = "cm",
-##     res = 600, pointsize = 4, type = "cairo-png")
-## par(mfrow = c(1, 1), mar = c(3.5, 3.5, 1, 0.5), cex.lab = 1.5, bty = "n",
-##     cex.axis = 1.5, cex = 1.5, las = 1)
-## plot(a, d, pch = 21, col = "#00000080", bg = "#00000040",
-##      xlab = "", ylab = "",
-##      xlim = xl, ylim = xl, xaxt = "n", yaxt = "n")
-## l2 <- lm(d ~ a)
-## abline(l2)
-## grid()
-## mtext(side = 1, text = expression(ES[EE]), cex = 2, line = 2.4)
-## mtext(side = 2, text = expression(ES[P4]), cex = 2, line = 2.1)
-## xat <- axTicks(1, usr = par("usr")[1:2])
-## labs <- gsub("-", "\U2212", print.default(xat))
-## axis(1, at = xat, labels = labs)
-## yat <- axTicks(2, usr = par("usr")[1:2])
-## labs <- gsub("-", "\U2212", print.default(yat))
-## axis(2, at = yat, labels = labs, padj = 0.4)
-## legend("topleft", legend = paste0("slope: ", format(coef(l2)[2], digits = 3)))
-## dev.off()
-
-
-## Both together in one plot.
-png("images/manuscript/Figure_6.png", width = 8, height = 4, units = "cm",
+png("images/manuscript/Figure_5.png", width = 8, height = 4, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
 par(mfrow = c(1, 2), mar = c(4.5, 4, 1.5, 0.5), cex.lab = 1, bty = "n",
     cex.axis = 1, cex = 1, las = 1)
@@ -2978,8 +2928,8 @@ ggplot(aes(Var2, Var1, fill = value, label = value)) +
     ##       axis.text.y = element_text(hjust = 1, size = 7),
     ##       plot.margin = margin(t = 5, l = 40))
 
-ggsave("images/manuscript/Figure_4.png", plot = plt, dpi = 600, width = 12,
-       height = 12, units = "cm", scale = 2.5)
+ggsave("images/manuscript/supplement/Figure_ATC3.png", plot = plt, dpi = 600,
+       width = 12, height = 12, units = "cm", scale = 2.5)
 plt
 ```
 
