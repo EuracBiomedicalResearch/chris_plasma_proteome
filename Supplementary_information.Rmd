@@ -275,7 +275,7 @@ cat("  \\includegraphics[width=0.8\\textwidth]{",
     sep = "")
 cat("  \\caption{Age dependency of the protein IGFALS. Shown are sex, BMI, ",
     "HCU and fasting status adjusted abundances against participants' age. ",
-    "The solid black line represents the linear regression line..}\n",
+    "The solid black line represents the linear regression line.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
@@ -289,7 +289,7 @@ cat("  \\includegraphics[width=0.8\\textwidth]{",
     sep = "")
 cat("  \\caption{Age dependency of the protein VTN. Shown are sex, BMI, ",
     "HCU and fasting status adjusted abundances against participants' age. ",
-    "The solid black line represents the linear regression line..}\n",
+    "The solid black line represents the linear regression line.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
