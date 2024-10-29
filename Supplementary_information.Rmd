@@ -735,13 +735,16 @@ pandoc.table(
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
 cat("  \\includegraphics[width=0.7\\textwidth]{",
-    "images/manuscript/supplement/pca_baseII_sex_hcu.png}\n",
+    "images/manuscript/supplement/pca_new_baseII.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the serum proteome data",
-    "from the BASE-II cohort. BASE-II serum proteome data was restricted to",
-    "the 131 proteins common with CHRIS and to data from participants of age",
-    "< 40. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives are colored grey.}\n")
+cat("  \\caption{Principal Component Analysis of the serum proteome data",
+    "from the BASE-II cohort for study participants of age < 40. BASE-II ",
+    "serum proteome data was restricted to the 131 proteins common with CHRIS.",
+    "Blue and red points indicate male and female participants. Left: grouping",
+    "of individuals based on PC1 and PC2. Middle: PCA loadings on PC1 and PC2.",
+    "Each arrow represents a protein with its length and direction indicating",
+    "the protein's contribution ot the respective principal component. Right:",
+    "relationship between PC1 (x-axis) and participant's age (y-axis).}\n")
 cat("\\end{figure}\n")
 
 ```
