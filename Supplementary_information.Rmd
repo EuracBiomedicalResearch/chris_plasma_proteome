@@ -1,5 +1,5 @@
 ---
-title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Plasma Proteome in a Broad Population Study}"
+title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Cirulating Proteome in a Broad Population Study}"
 output:
   pdf_document:
     includes:
@@ -8,43 +8,12 @@ output:
     toc_depth: 2
 ---
 
-\setcounter{table}{2}
-
 ```{r style, echo = FALSE, results = 'asis', message=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-# General data overview
+# Study Sample Characteristics and General Data Overview
 
-## Signal distributions of individual proteins
-
-Distribution of $log_{2}$ transformed signal distributions in the analyzed
-samples is shown for each protein.
-
-```{r, results = "asis"}
-library(readxl)
-library(pander)
-results <- as.data.frame(read_xlsx(
-    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
-           "results_sex_age_bmi_hcu_adjusted.xlsx")))
-rownames(results) <- results$Uniprot
-
-fls <- dir("images/manuscript/supplement", pattern = "^density",
-           full.names = TRUE)
-
-for (i in seq_along(fls)) {
-    prot_id <- sub("^density-", "", basename(fls[i]))
-    prot_id <- sub(".png", "", prot_id, fixed = TRUE)
-    cat("\n\\begin{figure}[H]\n")
-    cat("\\centering\n")
-    cat("  \\includegraphics[width=0.7\\textwidth]{",
-        fls[i], "}\n", sep = "")
-    cat("  \\caption{Signal distribution for ", prot_id,
-        " (", results[prot_id, "Genes"],").}\n", sep = "")
-    cat("\\end{figure}\n")
-    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
-    }
-```
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
@@ -61,13 +30,18 @@ cat("\\end{figure}\n")
 
 ```
 
-**Table S1** (external spreadsheet, xlsx format): Results from association
-analyses.
 
-**Table S2** (external spreadsheet, xlsx format): Functional annotations for
-detected proteins.
+# Protein Coverage and Variation in the CHRIS Cohort
+
 
 ```{r, results = "asis"}
+library(readxl)
+library(pander)
+results <- as.data.frame(read_xlsx(
+    paste0("data/xlsx/sex_age_bmi_associated_proteins/",
+           "results_sex_age_bmi_hcu_adjusted.xlsx")))
+rownames(results) <- results$Uniprot
+
 tab <- results[,
                c("Uniprot", "Genes", "Description",
                  "cv_study",
@@ -153,33 +127,79 @@ cat("  \\includegraphics[width=0.7\\textwidth]{",
     sep = "")
 cat("  \\caption{Correlation between quantified protein abundances and ",
     "related diagnostic assays. Shown are MS-determind, relative protein ",
-    "abundances (normalized signal intensities) on the y-axis and ",
+    "abundances (normalized intensities) on the y-axis and ",
     "related diagnostic assays on the x-axis.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
 ```
 
-
-## Principal Component Analysis and influence of hormonal contraceptive use
-
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
-    "images/manuscript/supplement/Figure_S149.png}\n",
+cat("  \\includegraphics[width=0.95\\textwidth]{",
+    "images/manuscript/supplement/Figure_1_female.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the CHRIS plasma proteome ",
-    "data. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives (ATC level 3 code G03A, ",
-    "hormonal contraceptives for systemic use, and ATC level 4 G03HB, ",
-    "antiandrogens and estrogens) are colored grey.}\n")
+cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
+    "proteome of female CHRIS participants. A) Sample grouping by PC1 and ",
+    "PC2. Each point represents an individual with a different color used ",
+    "for men (blue) and women (red). B) Loadings from the PCA. Each arrow ",
+    "represents one protein with its length and direction indicating their ",
+    "impact and importance for that principal component. C) Relationship ",
+    "between PC1 (x-axis) and the participant’s age (y-axis). Points are ",
+    "colored by participants’ sex.}\n",
+    sep = "")
 cat("\\end{figure}\n")
 
 ```
 
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.95\\textwidth]{",
+    "images/manuscript/supplement/Figure_1_male.png}\n",
+    sep = "")
+cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
+    "proteome of male CHRIS participants. A) Sample grouping by PC1 and ",
+    "PC2. Each point represents an individual with a different color used ",
+    "for men (blue) and women (red). B) Loadings from the PCA. Each arrow ",
+    "represents one protein with its length and direction indicating their ",
+    "impact and importance for that principal component. C) Relationship ",
+    "between PC1 (x-axis) and the participant’s age (y-axis). Points are ",
+    "colored by participants’ sex.}\n",
+    sep = "")
+cat("\\end{figure}\n")
 
-# Sex, age and body mass index associated proteins
+```
+
+```{r pc1-association, echo = FALSE, message = FALSE, warning = FALSE, results = "asis"}
+## The data for this table is created in code chunk "table-association-pc1"
+tmp <- data.frame(
+    `$Variable$` = c("G03A", "Age_10", "G03H", "Sex", "G02B", "BMI4", "G03F"),
+    `$Description$` = c("Hormonal contraceptives for systemic use",
+                                 "Participant's age",
+                                 "Antiandrogens",
+                                 "Sex",
+                                 "Contraceptives for topical use",
+                                 "BMI category 4 (obese)",
+                                 "Progestogens and estrogens in combination"),
+    `$coef$` = c(-6.543, 0.5611, -8.717, -0.9742, -3.138, 0.4193, -1.769),
+    `$p-value$` = c(5.673e-299, 1.133e-72, 1.112e-48, 1.53e-27, 3.546e-19,
+                    0.0006855, 0.001349),
+    check.names = FALSE
+)
+rownames(tmp) <- NULL
+pandoc.table(
+    tmp, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+    split.cells = 50, style = "rmarkdown", digits = 3,
+    caption = paste0(
+        "Variables significantly associated with principal component 1. ",
+        "Results are ordered by p-value."))
+
+```
+
+
+# Plasma Proteome Associations to Sex, Age and BMI
 
 ## Sex-associated plasma proteins
 
@@ -248,7 +268,7 @@ cat("  \\includegraphics[width=0.8\\textwidth]{",
     sep = "")
 cat("  \\caption{Age dependency of the protein IGFALS. Shown are sex, BMI, ",
     "HCU and fasting status adjusted abundances against participants' age. ",
-    "The solid black line represents the linear regression line..}\n",
+    "The solid black line represents the linear regression line.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
@@ -262,7 +282,7 @@ cat("  \\includegraphics[width=0.8\\textwidth]{",
     sep = "")
 cat("  \\caption{Age dependency of the protein VTN. Shown are sex, BMI, ",
     "HCU and fasting status adjusted abundances against participants' age. ",
-    "The solid black line represents the linear regression line..}\n",
+    "The solid black line represents the linear regression line.}\n",
     sep = "")
 cat("\\end{figure}\n")
 
@@ -381,7 +401,7 @@ pandoc.table(
 ```
 
 
-# Sensitivity analysis
+## Sensitivity analysis
 
 To evaluate the influence of hormonal contraceptive use on results for age, sex
 and BMI associations, the analysis was repeated without adjustment for hormonal
@@ -439,12 +459,83 @@ pandoc.table(
 
 ```
 
-# Plasma proteins associated with medication (ATC level 3)
+# Influence of Medication on the Plasma Proteome
+
+## ATC level 3 Medications
 
 Associations were evaluated for 27 ATC level 3 medications taken on a regular
 basis (at least twice per week) by more than 14 study participants. Significant
 associations are shown for each medication in the tables below. For 11
 medications no significant association was identified.
+
+```{r, results = "asis"}
+atc3_table <- data.frame(
+    ATC = c("G03A", "H03A", "B01A", "C10A", "C09A", "C07A", "N06A", "C09D",
+            "A02B", "C08C", "C09C", "A12A", "C09B", "A10B", "M01A", "G02B",
+            "G04C", "M04A", "N03A", "N05C", "S01E", "R03A", "N05B", "N05A",
+            "G03F", "G03H", "N04B"),
+    Name = c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+             "THYROID PREPARATIONS",
+             "ANTITHROMBOTIC AGENTS",
+             "LIPID MODIFYING AGENTS, PLAIN",
+             "ACE INHIBITORS, PLAIN",
+             "BETA BLOCKING AGENTS",
+             "ANTIDEPRESSANTS",
+             "ANGIOTENSIN II ANTAGONISTS, COMBINATIONS",
+             "DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)",
+             "SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS",
+             "ANGIOTENSIN II ANTAGONISTS, PLAIN",
+             "CALCIUM",
+             "ACE INHIBITORS, COMBINATIONS",
+             "BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS",
+             "ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS",
+             "CONTRACEPTIVES FOR TOPICAL USE",
+             "DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY",
+             "ANTIGOUT PREPARATIONS",
+             "ANTIEPILEPTICS",
+             "HYPNOTICS AND SEDATIVES",
+             "ANTIGLAUCOMA PREPARATIONS AND MIOTICS",
+             "ADRENERGICS, INHALANTS",
+             "ANXIOLYTICS",
+             "ANTIPSYCHOTICS",
+             "PROGESTOGENS AND ESTROGENS IN COMBINATION",
+             "ANTIANDROGENS",
+             "DOPAMINERGIC AGENTS"),
+    Participants = c(286, 262, 243, 203, 156, 149, 141, 113, 94, 91, 74, 65,
+                     59, 57, 48, 46, 46, 36, 34, 32, 30, 29, 24, 21, 18, 16,
+                     16),
+    Proteins = c(50, 0, 2, 1, 0, 1, 0, 1, 0, 0, 1, 2, 0, 4, 3, 19, 4, 2, 1,
+                 0, 0, 1, 0, 0, 0, 38, 1)
+)
+pandoc.table(
+    atc3_table, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+        split.cells = 50, style = "rmarkdown", digits = 3,
+        caption = paste0("Overview of association results for ATC level 3 ",
+                         "medications in the CHRIS study subset. Only ",
+                         "medications taken on a regular basis by more than ",
+                         "14 of the in total 3,632 study participants were ",
+                         "considered. Columns *Participants* and *Proteins* ",
+                         "list the number of participants taking the ",
+                         "medication and number of significantly associated ",
+                         "proteins."))
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_ATC3.png}\n",
+    sep = "")
+cat("  \\caption{Significant associations between proteins (rows) and ATC",
+    " level 3 medications (columns). Effect sizes (as a number and color coded)",
+    " are only shown for significant associations. Ordering of rows and ",
+    "columns represent the result from a hierarchical cluster analysis (",
+    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
 
 ```{r, results = "asis"}
 atc3 <- read_xlsx("data/xlsx/sex_age_bmi_associated_proteins/results_sex_age_bmi_atc3.xlsx")
@@ -502,7 +593,8 @@ for (i in seq_len(nrow(atc_3_names))) {
 }
 ```
 
-# Plasma proteins associated with medication (ATC level 4)
+
+## ATC level 4 medications
 
 Associations were evaluated for 34 ATC level 4 medications taken on a regular
 basis (at least twice per week) by more than 14 study participants. The
@@ -567,7 +659,9 @@ cat("  \\includegraphics[width=0.9\\textwidth]{",
     sep = "")
 cat("  \\caption{Significant associations between proteins (rows) and ATC",
     " level 4 medications (columns). Effect sizes (as a number and color coded)",
-    " are only shown for significant associations.}\n",
+    " are only shown for significant associations. Ordering of rows and ",
+    "columns represent the result from a hierarchical cluster analysis (",
+    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
     sep = "")
 cat("\\end{figure}\n")
 
@@ -634,7 +728,7 @@ for (i in seq_len(nrow(atc4_table))) {
 }
 ```
 
-# Plasma proteins associated with usage of hormonal contraceptives
+# Oral Hormonal Contraceptives Shape the Plasma Proteome in Female Study Participants
 
 
 A comparison of the results from the analysis on the full data set and on the
@@ -643,24 +737,26 @@ for associations with hormonal contraceptive use are highly similar between the
 two analyses and p-values highly related (same rank, but difference in the
 values due to the differences in statistical power from the two analyses).
 
+
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
+cat("  \\includegraphics[width=1.7\\textwidth]{",
     "images/manuscript/supplement/Figure_S151.png}\n",
     sep = "")
 cat("  \\caption{Comparison of results for association with hormonal ",
     "contraceptive use from the analysis of the full data set (x-axis) and ",
     "the analysis on the subset of female participants below 40 years ",
-    "of age (y axis). Shown are -log10 of p-values, ranks of p-values and ",
-    "coefficients.}\n",
+    "of age (y axis). Shown are -log10 of p-values (A), ranks of p-values ",
+    "(B) and coefficients (C).}\n",
     sep = "")
 cat("\\end{figure}\n")
 
 ```
 
 
-# Replication of results in the serum proteomics data of the BASE-II cohort
+
+# Hormonal Contraceptive Use Induces Similar Proteomics Changes in an Independent Cohort
 
 Influence of hormonal contraceptives on the serum proteome of female study
 participants below the age of 40 was validated using data from an independent
@@ -686,25 +782,23 @@ pandoc.table(
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
-    "images/manuscript/supplement/pca_baseII_sex_hcu.png}\n",
+cat("  \\includegraphics[width=0.95\\textwidth]{",
+    "images/manuscript/supplement/pca_new_baseII.png}\n",
     sep = "")
-cat("  \\caption{Principal component anaysis of the serum proteome data",
-    "from the BASE-II cohort. BASE-II serum proteome data was restricted to",
-    "the 131 proteins common with CHRIS and to data from participants of age",
-    "< 40. Blue and red points indicate male and female participants",
-    "participants using hormonal contraceptives are colored grey.}\n")
+cat("  \\caption{Principal Component Analysis of the serum proteome data",
+    "from the BASE-II cohort for study participants of age < 40. BASE-II ",
+    "serum proteome data was restricted to the 131 proteins common with CHRIS.",
+    "Blue and red points indicate male and female participants. Left: grouping",
+    "of individuals based on PC1 and PC2. Middle: PCA loadings on PC1 and PC2.",
+    "Each arrow represents a protein with its length and direction indicating",
+    "the protein's contribution ot the respective principal component. Right:",
+    "relationship between PC1 (x-axis) and participant's age (y-axis).}\n")
 cat("\\end{figure}\n")
 
 ```
 
-**Table S46** (external spreadsheet, xlsx format): Full results from the
-analysis of the BASE-II cohort.
 
-\setcounter{table}{46}
-
-
-# Influence of different combined oral contraceptives on the CHRIS plasma proteome
+# Combined Hormonal Contraceptives Containing Ethinylestradiol Have a Stronger Effect Than Those with Natural Estrogens
 
 
 ```{r, results = "asis"}
@@ -769,11 +863,9 @@ cat("\\end{figure}\n")
 
 ```
 
-**Table S48** (external spreadsheet, xlsx format): Full results for the
-association analysis with different COCs.
 
+# No Long-Lasting Effects of Hormonal Contraceptives on the Plasma Proteome Observed
 
-# Previous hormonal contraceptive use
 
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
@@ -783,12 +875,33 @@ cat("  \\includegraphics[width=1.1\\textwidth]{",
     sep = "")
 cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
     "plasma proteome in the CHRIS study.",
-    " Left: results from the comparison between participants ",
+    " A: results from the comparison between participants ",
     "currently taking hormonal contraceptives and those that never took ",
-    "hormonal contraceptives. Middle: results from the comparison between ",
+    "hormonal contraceptives. B: results from the comparison between ",
     "participants that used hormonal contraceptives in the past and those ",
     "that never took them. Proteins with significant differences in ",
-    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
+    "abundances are highlighted in red. C: abundance of angiotensinogen ",
+    "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=1.1\\textwidth]{",
+    "images/manuscript/supplement/Figure_previous_hcu_np.png}\n",
+    sep = "")
+cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
+    "plasma proteome in the CHRIS study, subset of women who declared to ",
+    "have never been pregnant.",
+    " A: results from the comparison between participants ",
+    "currently taking hormonal contraceptives and those that never took ",
+    "hormonal contraceptives. B: results from the comparison between ",
+    "participants that used hormonal contraceptives in the past and those ",
+    "that never took them. Proteins with significant differences in ",
+    "abundances are highlighted in red. C: abundance of angiotensinogen ",
     "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
     sep = "")
 cat("\\end{figure}\n")
@@ -799,13 +912,9 @@ cat("\\end{figure}\n")
 
 # Discussion
 
-**Table S49** (external spreadsheet, xlsx format): Comparison with results from
-literature.
-
 
 # Extended Material and Methods
 
-\setcounter{table}{49}
 
 ```{=latex}
 \begin{table}[h!]

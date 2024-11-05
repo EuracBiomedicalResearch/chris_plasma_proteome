@@ -36,10 +36,6 @@ is recorded on the basis of self-reported questionnaires.
 
 ## Data import and cleaning
 
-```
-
-```
-
 ```{r data-libraries}
 library(RColorBrewer)
 library(pander)
@@ -227,6 +223,125 @@ dev.off()
 coloured by sex and HCU intake (red: women; blue: men; HCU Yes: Black) Women who
 are taking hormonal contraception exhibit a distinct separation on Principal
 Component 1 from both women who are not taking hormonal contraception and men.
+
+Update of PCA figure in Revision.
+```{r}
+png("../../results/plots/pca/pca_new_baseII.png", width = 15, height = 5, units = "cm",
+    res = 600, pointsize = 4, type = "cairo-png")
+pc_all <- prcomp(prot_data_scaled)
+# library(CompMetaboTools)
+cols <- rep("#E41A1C", nrow(prot_data))
+cols[base_data$sex == "m"] <- "#377EB8"
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.7), cex.lab = 2, bty = "n",
+    cex.axis = 1.5,  las = 1)
+plot_pca(pc_all, pch = NA, xlim = c(-10, 15))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc_all$x[, 1], pc_all$x[, 2], pch = 21, col = paste0(cols, 80),
+       bg = paste0(cols, 60), cex = 1.5)
+plot_pca(pc_all, pch = NA, col = NA, xlim = c(-10, 15))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc_all$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc_all$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc_all$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+## Correlation PC1 and age.
+pc_s <- summary(pc_all)
+plot(pc_all$x[, 1], base_data$Age_T0, pch = 21, col = paste0(cols, 80),
+     bg = paste0(cols, 60), cex = 1.5, xlim = c(-10, 15),
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age")
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
+grid()
+dev.off()
+```
+
+## Males only
+png("../../results/plots/pca/pca_new_baseII_male.png", width = 15, height = 5,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+idx <- which(base_data$sex == "m")
+pc <- prcomp(scale(prot_data[idx, gene_symbols], scale = TRUE))
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.5), cex.lab = 2, bty = "n",
+    cex.axis = 1.5, las = 1)
+plot_pca(pc, pch = NA, xlim = c(-16, 12), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = paste0(cols[idx], 80),
+       bg = paste0(cols[idx], 60), cex = 1.5)
+plot_pca(pc, pch = NA, col = NA, xlim = c(-16, 12), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+## Correlation PC1 and age.
+pc_s <- summary(pc)
+plot(pc$x[, 1], base_data$Age_T0[idx], pch = 21, col = paste0(cols[idx], 80),
+     bg = paste0(cols[idx], 60), cex = 1.5,
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age", xlim = c(-16, 12))
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
+grid()
+dev.off()
+```
+
+```{r}
+## Females only
+png("../../results/plots/pca/pca_new_baseII_female.png", width = 15, height = 5,
+    units = "cm", res = 600, pointsize = 4, type = "cairo-png")
+idx <- which(base_data$sex == "w")
+pc <- prcomp(scale(prot_data[idx, gene_symbols], scale = TRUE))
+par(mfrow = c(1, 3), mar = c(4.5, 4.5, 0.5, 0.5), cex.lab = 2, bty = "n",
+    cex.axis = 1.5, las = 1)
+plot_pca(pc, pch = NA, xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -18, line = -4.0)
+points(pc$x[, 1], pc$x[, 2], pch = 21, col = paste0(cols[idx], 80),
+       bg = paste0(cols[idx], 60), cex = 1.5)
+plot_pca(pc, pch = NA, col = NA, xlim = c(-16, 9), ylim = c(-11, 12))
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -18, line = -4.0)
+unsigned.range <- function(x)
+        c(-abs(min(x, na.rm = TRUE)), abs(max(x, na.rm = TRUE)))
+y <- pc$rotation[, 1:2]
+scl <- max(
+    unsigned.range(y[, 1]) / unsigned.range(pc$x[, 1]),
+    unsigned.range(y[, 2]) / unsigned.range(pc$x[, 2]))
+a_lengths <- sqrt(y[, 1]^2 + y[, 2]^2)
+y <- y / scl
+arrows(x0 = 0, x1 = y[, 1],
+       y0 = 0, y1 = y[, 2],
+       lwd = 0.75, angle = 30, length = 0.05,
+       col = "#00000050")
+text(y[, 1] * 1.1, y[, 2] * 1.1, labels = rownames(y),
+     col = "#00000080", cex = 1.4)
+## Correlation PC1 and age.
+pc_s <- summary(pc)
+plot(pc$x[, 1], base_data$Age_T0[idx], pch = 21, col = paste0(cols[idx], 80),
+     bg = paste0(cols[idx], 60), cex = 1.5,
+     xlab = paste0("PC1: ", format(pc_s$importance[2, 1] * 100, digits = 3),
+                   " % variance"), ylab = "Age", xlim = c(-16, 9))
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -18, line = -4.0)
+grid()
+dev.off()
+
+```
 
 ### Oral contraceptive-associated proteins
 
@@ -467,7 +582,7 @@ regulated proteins (see Table), categorized by HCU:
 png("../../results/plots/violin_hcu_r/figure_2XX_SERPINA6.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
 f[f == "m"] <- "Men"
@@ -496,7 +611,7 @@ dev.off()
 png("../../results/plots/violin_hcu_r/figure_2XX_AGT.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 # par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
@@ -525,7 +640,7 @@ dev.off()
 png("../../results/plots/violin_hcu_r/figure_2XX_PGLYRP2.png", width = 5, height = 6, units = "cm",
 res = 600, pointsize = 4, type = "cairo-png")
 par(mar=c(5,6,5,1)+.1, cex.axis = 2, cex.lab = 2,
-    bty = "n", cex.main = 2.5)
+    bty = "n", cex.main = 2.5, mgp = c(0, 0.8, 0), las = 1)
 # par(cex.axis = 2, cex.lab = 2,mar=c(5,6,8,1)+.1, cex.text=1, bty="n")
 f <- as.character(base_data$sex)
 f[base_data$HCU == "Yes"] <- "HCU"
@@ -555,7 +670,7 @@ Below Volcano plots display the coefficients and standardized effects sizes for 
 ```{r, include=FALSE}
 png("../../results/plots/volcano/Figure_2XXX_coef.png", width = 5, height = 6, units = "cm",
     res = 600, pointsize = 4, type = "cairo-png")
-par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n")
+par(mar=c(5,6,5,1)+.1, cex.lab = 1.5, bty = "n", las = 1)
 cols_vol = rep("#00000080", nrow(results_hcu))
 cols_vol[results$p.adj_HCUYes < 0.05] <- "#c31c1d"
 plot(
