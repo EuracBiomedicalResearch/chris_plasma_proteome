@@ -8,8 +8,6 @@ output:
     toc_depth: 2
 ---
 
-\setcounter{table}{2}
-
 ```{r style, echo = FALSE, results = 'asis', message=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
@@ -32,14 +30,9 @@ cat("\\end{figure}\n")
 
 ```
 
-**Table S1** (external spreadsheet, xlsx format): Results from association
-analyses.
-
 
 # Protein Coverage and Variation in the CHRIS Cohort
 
-**Table S2** (external spreadsheet, xlsx format): Functional annotations for
-detected proteins.
 
 ```{r, results = "asis"}
 library(readxl)
@@ -144,7 +137,7 @@ cat("\\end{figure}\n")
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
+cat("  \\includegraphics[width=0.95\\textwidth]{",
     "images/manuscript/supplement/Figure_1_female.png}\n",
     sep = "")
 cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
@@ -163,7 +156,7 @@ cat("\\end{figure}\n")
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
+cat("  \\includegraphics[width=0.95\\textwidth]{",
     "images/manuscript/supplement/Figure_1_male.png}\n",
     sep = "")
 cat("  \\caption{Principal Component Analysis (PCA) of the plasma ",
@@ -476,6 +469,75 @@ associations are shown for each medication in the tables below. For 11
 medications no significant association was identified.
 
 ```{r, results = "asis"}
+atc3_table <- data.frame(
+    ATC = c("G03A", "H03A", "B01A", "C10A", "C09A", "C07A", "N06A", "C09D",
+            "A02B", "C08C", "C09C", "A12A", "C09B", "A10B", "M01A", "G02B",
+            "G04C", "M04A", "N03A", "N05C", "S01E", "R03A", "N05B", "N05A",
+            "G03F", "G03H", "N04B"),
+    Name = c("HORMONAL CONTRACEPTIVES FOR SYSTEMIC USE",
+             "THYROID PREPARATIONS",
+             "ANTITHROMBOTIC AGENTS",
+             "LIPID MODIFYING AGENTS, PLAIN",
+             "ACE INHIBITORS, PLAIN",
+             "BETA BLOCKING AGENTS",
+             "ANTIDEPRESSANTS",
+             "ANGIOTENSIN II ANTAGONISTS, COMBINATIONS",
+             "DRUGS FOR PEPTIC ULCER AND GASTRO-OESOPHAGEAL REFLUX DISEASE (GORD)",
+             "SELECTIVE CALCIUM CHANNEL BLOCKERS WITH MAINLY VASCULAR EFFECTS",
+             "ANGIOTENSIN II ANTAGONISTS, PLAIN",
+             "CALCIUM",
+             "ACE INHIBITORS, COMBINATIONS",
+             "BLOOD GLUCOSE LOWERING DRUGS, EXCL. INSULINS",
+             "ANTIINFLAMMATORY AND ANTIRHEUMATIC PRODUCTS, NON-STEROIDS",
+             "CONTRACEPTIVES FOR TOPICAL USE",
+             "DRUGS USED IN BENIGN PROSTATIC HYPERTROPHY",
+             "ANTIGOUT PREPARATIONS",
+             "ANTIEPILEPTICS",
+             "HYPNOTICS AND SEDATIVES",
+             "ANTIGLAUCOMA PREPARATIONS AND MIOTICS",
+             "ADRENERGICS, INHALANTS",
+             "ANXIOLYTICS",
+             "ANTIPSYCHOTICS",
+             "PROGESTOGENS AND ESTROGENS IN COMBINATION",
+             "ANTIANDROGENS",
+             "DOPAMINERGIC AGENTS"),
+    Participants = c(286, 262, 243, 203, 156, 149, 141, 113, 94, 91, 74, 65,
+                     59, 57, 48, 46, 46, 36, 34, 32, 30, 29, 24, 21, 18, 16,
+                     16),
+    Proteins = c(50, 0, 2, 1, 0, 1, 0, 1, 0, 0, 1, 2, 0, 4, 3, 19, 4, 2, 1,
+                 0, 0, 1, 0, 0, 0, 38, 1)
+)
+pandoc.table(
+    atc3_table, split.table = "Inf", justify = "ccrr", keep.line.breaks = FALSE,
+        split.cells = 50, style = "rmarkdown", digits = 3,
+        caption = paste0("Overview of association results for ATC level 3 ",
+                         "medications in the CHRIS study subset. Only ",
+                         "medications taken on a regular basis by more than ",
+                         "14 of the in total 3,632 study participants were ",
+                         "considered. Columns *Participants* and *Proteins* ",
+                         "list the number of participants taking the ",
+                         "medication and number of significantly associated ",
+                         "proteins."))
+```
+
+```{r, results = "asis"}
+cat("\n\\begin{figure}[H]\n")
+cat("\\centering\n")
+cat("  \\includegraphics[width=0.9\\textwidth]{",
+    "images/manuscript/supplement/Figure_ATC3.png}\n",
+    sep = "")
+cat("  \\caption{Significant associations between proteins (rows) and ATC",
+    " level 3 medications (columns). Effect sizes (as a number and color coded)",
+    " are only shown for significant associations. Ordering of rows and ",
+    "columns represent the result from a hierarchical cluster analysis (",
+    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
+    sep = "")
+cat("\\end{figure}\n")
+
+```
+
+
+```{r, results = "asis"}
 atc3 <- read_xlsx("data/xlsx/sex_age_bmi_associated_proteins/results_sex_age_bmi_atc3.xlsx")
 atc3 <- as.data.frame(atc3)
 
@@ -529,22 +591,6 @@ for (i in seq_len(nrow(atc_3_names))) {
             "adjusted for multiple hypothesis testing. $ES$ effect size. ",
             "Proteins are ordered by p-value."))
 }
-```
-
-```{r, results = "asis"}
-cat("\n\\begin{figure}[H]\n")
-cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
-    "images/manuscript/supplement/Figure_ATC3.png}\n",
-    sep = "")
-cat("  \\caption{Significant associations between proteins (rows) and ATC",
-    " level 3 medications (columns). Effect sizes (as a number and color coded)",
-    " are only shown for significant associations. Ordering of rows and ",
-    "columns represent the result from a hierarchical cluster analysis (",
-    "Ward clustering of an Euclidean dissimilarity matrix).}\n",
-    sep = "")
-cat("\\end{figure}\n")
-
 ```
 
 
@@ -691,21 +737,23 @@ for associations with hormonal contraceptive use are highly similar between the
 two analyses and p-values highly related (same rank, but difference in the
 values due to the differences in statistical power from the two analyses).
 
+
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.9\\textwidth]{",
+cat("  \\includegraphics[width=1.7\\textwidth]{",
     "images/manuscript/supplement/Figure_S151.png}\n",
     sep = "")
 cat("  \\caption{Comparison of results for association with hormonal ",
     "contraceptive use from the analysis of the full data set (x-axis) and ",
     "the analysis on the subset of female participants below 40 years ",
-    "of age (y axis). Shown are -log10 of p-values, ranks of p-values and ",
-    "coefficients.}\n",
+    "of age (y axis). Shown are -log10 of p-values (A), ranks of p-values ",
+    "(B) and coefficients (C).}\n",
     sep = "")
 cat("\\end{figure}\n")
 
 ```
+
 
 
 # Hormonal Contraceptive Use Induces Similar Proteomics Changes in an Independent Cohort
@@ -734,7 +782,7 @@ pandoc.table(
 ```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
-cat("  \\includegraphics[width=0.7\\textwidth]{",
+cat("  \\includegraphics[width=0.95\\textwidth]{",
     "images/manuscript/supplement/pca_new_baseII.png}\n",
     sep = "")
 cat("  \\caption{Principal Component Analysis of the serum proteome data",
@@ -748,11 +796,6 @@ cat("  \\caption{Principal Component Analysis of the serum proteome data",
 cat("\\end{figure}\n")
 
 ```
-
-**Table S46** (external spreadsheet, xlsx format): Full results from the
-analysis of the BASE-II cohort.
-
-\setcounter{table}{46}
 
 
 # Combined Hormonal Contraceptives Containing Ethinylestradiol Have a Stronger Effect Than Those with Natural Estrogens
@@ -820,9 +863,6 @@ cat("\\end{figure}\n")
 
 ```
 
-**Table S48** (external spreadsheet, xlsx format): Full results for the
-association analysis with different COCs.
-
 
 # No Long-Lasting Effects of Hormonal Contraceptives on the Plasma Proteome Observed
 
@@ -835,12 +875,12 @@ cat("  \\includegraphics[width=1.1\\textwidth]{",
     sep = "")
 cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
     "plasma proteome in the CHRIS study.",
-    " Left: results from the comparison between participants ",
+    " A: results from the comparison between participants ",
     "currently taking hormonal contraceptives and those that never took ",
-    "hormonal contraceptives. Middle: results from the comparison between ",
+    "hormonal contraceptives. B: results from the comparison between ",
     "participants that used hormonal contraceptives in the past and those ",
     "that never took them. Proteins with significant differences in ",
-    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
+    "abundances are highlighted in red. C: abundance of angiotensinogen ",
     "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
     sep = "")
 cat("\\end{figure}\n")
@@ -856,12 +896,12 @@ cat("  \\includegraphics[width=1.1\\textwidth]{",
 cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
     "plasma proteome in the CHRIS study, subset of women who declared to ",
     "have never been pregnant.",
-    " Left: results from the comparison between participants ",
+    " A: results from the comparison between participants ",
     "currently taking hormonal contraceptives and those that never took ",
-    "hormonal contraceptives. Middle: results from the comparison between ",
+    "hormonal contraceptives. B: results from the comparison between ",
     "participants that used hormonal contraceptives in the past and those ",
     "that never took them. Proteins with significant differences in ",
-    "abundances are highlighted in red. Right: abundance of angiotensinogen ",
+    "abundances are highlighted in red. C: abundance of angiotensinogen ",
     "(AGT) in the three hormonal contraceptive use (HCU) groups.}\n",
     sep = "")
 cat("\\end{figure}\n")
@@ -872,13 +912,9 @@ cat("\\end{figure}\n")
 
 # Discussion
 
-**Table S49** (external spreadsheet, xlsx format): Comparison with results from
-literature.
-
 
 # Extended Material and Methods
 
-\setcounter{table}{49}
 
 ```{=latex}
 \begin{table}[h!]
@@ -894,30 +930,4 @@ Time  & \%A & \%B & FR {[}ml/mn{]} & Time  & \%A  & \%B  & FR {[}ml/mn{]}  \\
 5.2   & 97  & 3   & 0.8            &       &      &      &
 \end{tabular}
 \end{table}
-```
-
-\pagebreak
-
-# Appendix A: Abundance Distribution of Individual Proteins
-
-Distribution of $log_{2}$ transformed abundance distributions in the analyzed
-samples is shown for each protein.
-
-```{r, results = "asis"}
-fls <- dir("images/manuscript/supplement", pattern = "^density",
-           full.names = TRUE)
-
-for (i in seq_along(fls)) {
-    cat("\n\\begin{figure}[H]\n")
-    cat("\\centering\n")
-    cat("  \\includegraphics[width=0.9\\textwidth]{",
-        fls[i], "}\n", sep = "")
-    cat("  \\caption{Abundance distribution for of indicated proteins in ",
-        "CHRIS study samples. Inter quartile range (IQR) in study samples and ",
-        "coefficient of variation (CV) in study and quality control samples is",
-        "shown in the top left of each plot.}",
-        sep = "")
-    cat("\\end{figure}\n")
-    ## cat(paste0("![", met_name[i],".](", met_image[i], ")"), "\n")
-    }
 ```

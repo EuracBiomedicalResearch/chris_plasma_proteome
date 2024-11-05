@@ -1659,7 +1659,7 @@ results for BMI.
 #' results from sensitivity analysis
 png("images/manuscript/Figure_3.png", width = 12, height = 4, units = "cm",
     res = 600, pointsize = 4)
-par(mfrow = c(1, 3), mar = c(4.5, 5.5, 1.5, 0.5), cex.lab = 2, bty = "n",
+par(mfrow = c(1, 3), mar = c(4.5, 5.5, 3.5, 0.5), cex.lab = 2, bty = "n",
     cex.main = 2.5, cex.axis = 2, las = 1)
 ## Sex
 x <- Test_output[, "coef_SexFemale"]
@@ -1670,10 +1670,11 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      xlab = expression(coef[adj]),
      ylab = "",
      pch = 21, col = "#00000080", bg = bg,
-     main = "Sex association", cex = 1.5)
+     main = "", cex = 1.5)
 mtext(text = expression(coef), side = 2, line = 4, las = 0, cex = 1.3)
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -0.6, line = -0.5)
 #' Age
 x <- Test_output[, "coef_Age_10"]
 y <- Test_output_sens[, "coef_Age_10"]
@@ -1683,10 +1684,11 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      xlab = expression(coef[adj]),
      ylab = "",
      pch = 21, col = "#00000080", bg = bg,
-     main = "Age association", cex = 1.5)
+     main = "", cex = 1.5)
 mtext(text = expression(coef), side = 2, line = 4, las = 0, cex = 1.3)
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -0.16, line = -0.5)
 #' BMI 4 vs 2
 x <- Test_output[, "coef_BMIcat4"]
 y <- Test_output_sens[, "coef_BMIcat4"]
@@ -1696,10 +1698,11 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      xlab = expression(coef[adj]),
      ylab = "",
      pch = 21, col = "#00000080", bg = bg,
-     main = "BMI 4 vs 2", cex = 1.5)
+     main = "", cex = 1.5)
 mtext(text = expression(coef), side = 2, line = 4, las = 0, cex = 1.3)
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -0.7, line = -0.5)
 dev.off()
 
 ```
@@ -2045,7 +2048,7 @@ abline(0, 1)
 ## Export as figure for paper.
 png("images/manuscript/supplement/Figure_S151.png",
     width = 12, height = 4, units = "cm", res = 600, pointsize = 4)
-par(mfrow = c(1, 3), mar = c(4.5, 4.3, 1.5, 0.5), cex.lab = 1.5, bty = "n",
+par(mfrow = c(1, 3), mar = c(4.5, 4.3, 3.5, 0.5), cex.lab = 1.5, bty = "n",
     cex.main = 2.5, las = 1)
 x <- results$p.value_HCUYes
 y <- results_hcu$p.value_HCUYes
@@ -2058,18 +2061,21 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      xlab = expression(-log[10]~p-value),
      ylab = expression(-log[10]~p-value[subset]),
      pch = 21, col = "#00000080", bg = "#00000040",
-     main = "Hormonal contraceptive use")
+     main = "")
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -10.5, line = -0)
+
 ## Order?
 xl <- c(0, length(x))
 plot(x = rank(x), y = rank(y), xlim = xl, ylim = xl,
      xlab = expression(rank(p-value)),
      ylab = expression(rank(p-value[subset])),
      pch = 21, col = "#00000080", bg = "#00000040",
-     main = "Hormonal contraceptive use")
+     main = "")
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -10.5, line = -0)
 x <- results$coef_HCUYes
 y <- results_hcu$coef_HCUYes
 xl <- range(c(x, y))
@@ -2077,10 +2083,12 @@ plot(x = x, y = y, xlim = xl, ylim = xl,
      xlab = expression(coef),
      ylab = expression(coef[subset]),
      pch = 21, col = "#00000080", bg = "#00000040",
-     main = "Hormonal contraceptive use")
+     main = "")
 grid()
 abline(0, 1)
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = -1.1, line = -0)
 dev.off()
+
 ```
 
 The table below lists the proteins found significantly associated with hormonal
@@ -3407,29 +3415,32 @@ grid()
 #' Supplementary Figure for previous HCU.
 png("images/manuscript/supplement/Figure_previous_hcu.png", width = 15,
     height = 5, units = "cm", res = 600, pointsize = 4)
-
-par(mfrow = c(1, 3), mar = c(5, 5, 2, 0.5), cex.lab = 2, bty = "n",
+par(mfrow = c(1, 3), mar = c(5, 6, 3.5, 0.5), cex.lab = 2, bty = "n",
     cex.main = 3, cex.axis = 2.5, las = 1)
 y <- -log10(results_women_40$p.adj_HCU_historycurrent)
 x <- results_women_40$coef_HCU_historycurrent
 xl <- range(x)
 yl <- range(y)
-plot(x, y, main = "HCU: current vs never", xlab = "coefficient",
+plot(x, y, main = "", xlab = "coef",
      ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
      col = "#000000ce", bg = "#00000060")
 sigs <- results_women_40$significant_HCU_historycurrent
 points(x[sigs], y[sigs], pch = 21, col = "#E41A1CCE", bg = "#E41A1C40")
 grid()
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -1.5, line = -0)
 #' Can re-use the x and y limits because there is in fact no difference here.
 y <- -log10(results_women_40$p.adj_HCU_historypast)
 x <- results_women_40$coef_HCU_historypast
-plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
+plot(x, y, main = "", xlab = "coef",
      ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
          col = "#000000ce", bg = "#00000060")
 grid()
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -1.5, line = -0)
 vioplot(split(women_data_40$P01019, women_data_40$HCU_history),
-        main = "AGT", ylab = expression(log[2]~abundance))
+        main = "", ylab = "")
 grid()
+mtext(text = expression(log[2]~abundance), side = 2, line = 3, cex = 1.5, las = 0)
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = 0.2, line = -0)
 dev.off()
 
 ```
@@ -3671,28 +3682,32 @@ There is no long-lasting effect, even after removing previously pregnant women.
 png("images/manuscript/supplement/Figure_previous_hcu_np.png", width = 15,
     height = 5, units = "cm", res = 600, pointsize = 4)
 
-par(mfrow = c(1, 3), mar = c(5, 5, 2, 0.5), cex.lab = 2, bty = "n",
+par(mfrow = c(1, 3), mar = c(5, 5.5, 3.5, 0.5), cex.lab = 2, bty = "n",
     cex.main = 3, cex.axis = 2.5, las = 1)
 y <- -log10(results_women_40_np$p.adj_HCU_historycurrent)
 x <- results_women_40_np$coef_HCU_historycurrent
 xl <- range(x)
 yl <- range(y)
-plot(x, y, main = "HCU: current vs never", xlab = "coefficient",
+plot(x, y, main = "", xlab = "coef",
      ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
      col = "#000000ce", bg = "#00000060")
 sigs <- results_women_40_np$significant_HCU_historycurrent
 points(x[sigs], y[sigs], pch = 21, col = "#E41A1CCE", bg = "#E41A1C40")
+mtext(side = 3, outer = FALSE, text = "A", cex = 3, at = -1.5, line = -0)
 grid()
 #' Can re-use the x and y limits because there is in fact no difference here.
 y <- -log10(results_women_40_np$p.adj_HCU_historypast)
 x <- results_women_40_np$coef_HCU_historypast
-plot(x, y, main = "HCU: past vs never", xlab = "coefficient",
+plot(x, y, main = "", xlab = "coef",
      ylab = expression(-log[10](p[adj])), xlim = xl, ylim = yl, pch = 21,
          col = "#000000ce", bg = "#00000060")
 grid()
+mtext(side = 3, outer = FALSE, text = "B", cex = 3, at = -1.5, line = -0)
 vioplot(split(women_data_40_np$P01019, women_data_40_np$HCU_history),
-        main = "AGT", ylab = expression(log[2]~abundance))
+        main = "", ylab = "")
 grid()
+mtext(text = expression(log[2]~abundance), side = 2, line = 3, cex = 1.5, las = 0)
+mtext(side = 3, outer = FALSE, text = "C", cex = 3, at = 0.2, line = -0)
 dev.off()
 
 ```
