@@ -1,5 +1,6 @@
 ---
-title: "Supplementary Information for: \\textit{Pervasive Influence of Hormonal Contraceptives on the Human Cirulating Proteome in a Broad Population Study}"
+title: "Supplementary Information for: \\textit{Population-based Studies Reveal
+a Pervacive Influence of Hormonal Contraceptives on the Human Cirulating Proteome}"
 output:
   pdf_document:
     includes:
@@ -11,6 +12,46 @@ output:
 ```{r style, echo = FALSE, results = 'asis', message=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
+
+\pagebreak
+
+# Extended Material and Methods
+
+```{=latex}
+\begin{table}[h!]
+\caption{Set up for gradient separation (left) and wash and equilibration (right).}
+\begin{tabular}{llll|llll}
+\multicolumn{4}{c|}{Gradient pump} & \multicolumn{4}{c}{Regeneration pump} \\ \hline
+Time  & \%A & \%B & FR {[}ml/mn{]} & Time  & \%A  & \%B  & FR {[}ml/mn{]}  \\
+0     & 97  & 3   & 0.8            & 0     & 97   & 3    & 0.8             \\
+0.7   & 20  & 80  & 1              & 5     & 65   & 35   & 0.8             \\
+1.5   & 20  & 80  & 1              & 5.05  & 97   & 3    & 1               \\
+2     & 97  & 3   & 1              & 5.75  & 97   & 3    & 1               \\
+5     & 97  & 3   & 1              & 5.8   & 97   & 3    & 0.8             \\
+5.2   & 97  & 3   & 0.8            &       &      &      &
+\end{tabular}
+\end{table}
+
+```
+
+```{r, results = "asis"}
+library(pander)
+tmp <- data.frame(
+    Women = c("240", "28.7 (3.1)", "", "", "22 (9.2%)",
+              "172 (71.7%)", "31 (12.9%)", "15 (6.3%)"),
+    Men = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
+            "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
+)
+rownames(tmp) <- c("n", "Age, mean (SD)", "Classification according",
+                   "to BMI, n (%)", "1: underweight", "2: normal",
+                   "3: overweight", "4: obese")
+pandoc.table(
+    tmp, split.table = "Inf", justity = c("ccc"),
+    caption = paste0("Demographic characteristics of the BASE-II study ",
+                     "participants included in the analysis."))
+
+```
+
 
 # Study Sample Characteristics and General Data Overview
 
@@ -763,23 +804,6 @@ participants below the age of 40 was validated using data from an independent
 cohort, the BASE-II study.
 
 ```{r, results = "asis"}
-tmp <- data.frame(
-    Women = c("240", "28.7 (3.1)", "", "", "22 (9.2%)",
-              "172 (71.7%)", "31 (12.9%)", "15 (6.3%)"),
-    Men = c("197", "29.2 (3.0)", "", "", "8 (4.1%)",
-            "127 (64.5%)", "53 (27.0%)", "9 (4.6%)")
-)
-rownames(tmp) <- c("n", "Age, mean (SD)", "Classification according",
-                   "to BMI, n (%)", "1: underweight", "2: normal",
-                   "3: overweight", "4: obese")
-pandoc.table(
-    tmp, split.table = "Inf", justity = c("ccc"),
-    caption = paste0("Demographic characteristics of the BASE-II study ",
-                     "participants included in the analysis."))
-
-```
-
-```{r, results = "asis"}
 cat("\n\\begin{figure}[H]\n")
 cat("\\centering\n")
 cat("  \\includegraphics[width=0.95\\textwidth]{",
@@ -906,28 +930,4 @@ cat("  \\caption{Impact of previous use of hormonal contraceptives on the ",
     sep = "")
 cat("\\end{figure}\n")
 
-```
-
-
-
-# Discussion
-
-
-# Extended Material and Methods
-
-
-```{=latex}
-\begin{table}[h!]
-\caption{Set up for gradient separation (left) and wash and equilibration (right).}
-\begin{tabular}{llll|llll}
-\multicolumn{4}{c|}{Gradient pump} & \multicolumn{4}{c}{Regeneration pump} \\ \hline
-Time  & \%A & \%B & FR {[}ml/mn{]} & Time  & \%A  & \%B  & FR {[}ml/mn{]}  \\
-0     & 97  & 3   & 0.8            & 0     & 97   & 3    & 0.8             \\
-0.7   & 20  & 80  & 1              & 5     & 65   & 35   & 0.8             \\
-1.5   & 20  & 80  & 1              & 5.05  & 97   & 3    & 1               \\
-2     & 97  & 3   & 1              & 5.75  & 97   & 3    & 1               \\
-5     & 97  & 3   & 1              & 5.8   & 97   & 3    & 0.8             \\
-5.2   & 97  & 3   & 0.8            &       &      &      &
-\end{tabular}
-\end{table}
 ```
