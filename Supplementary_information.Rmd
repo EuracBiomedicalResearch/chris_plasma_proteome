@@ -1,6 +1,5 @@
 ---
-title: "Supplementary Information for: \\textit{Population-based Studies Reveal
-a Pervacive Influence of Hormonal Contraceptives on the Human Cirulating Proteome}"
+title: "Supplementary Information for: \\textit{Extensive Modulation of the Circulating Blood Proteome by Hormonal Contraceptive Use Across Two Population Studies}"
 output:
   pdf_document:
     includes:
